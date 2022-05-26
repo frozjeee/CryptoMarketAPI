@@ -1,0 +1,28 @@
+version: '3.9'
+
+services:
+
+  postgres:
+    container_name: country
+    image: postgres:latest
+    ports:
+      - "5432:5432"
+    restart: always
+    environment:
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=admin
+      - POSTGRES_DB=country
+    volumes:
+      - /data/postgres-country:/data/postgres-country
+    networks:
+      - postgres
+
+
+volumes:
+  postgres-country:
+    driver: local
+
+
+networks:
+  postgres:
+    driver: bridge

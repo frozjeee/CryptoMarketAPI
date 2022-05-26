@@ -1,0 +1,17 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+
+# Directories for migrations
+migrations/
+
+# Migration files
+alembic.ini
+
+# Modules
+venv/*
+bitnami/
+
+# Scripts
+enter_venv.bat
+build.bat
