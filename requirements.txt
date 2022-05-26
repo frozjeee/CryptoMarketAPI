@@ -1,0 +1,9 @@
+aiokafka==0.7.2
+alembic==1.7.7
+databases==0.5.5
+fastapi==0.78.0
+jose==1.0.0
+passlib==1.7.4
+pydantic==1.9.0
+python_jose==3.3.0
+SQLAlchemy==1.4.35
