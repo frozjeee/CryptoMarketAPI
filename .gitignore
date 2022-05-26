@@ -3,10 +3,7 @@ __pycache__/
 *.py[cod]
 
 # Directories for migrations
-migrations/
-
-# Migration files
-alembic.ini
+versions/
 
 # Modules
 venv/*
