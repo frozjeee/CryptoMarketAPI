@@ -1,0 +1,31 @@
+version: '3.9'
+
+services:
+  postgres:
+    container_name: order
+    image: postgres:latest
+    ports:
+      - "5432:5432"
+    expose:
+      - "5432"
+    restart: always
+    environment:
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=admin
+      - POSTGRES_DB=order
+    volumes:
+      - /data/postgres-order:/data/postgres-order
+    networks:
+      - postgres
+
+
+volumes:
+  postgres-data-order:
+    driver: local
+
+
+networks:
+  postgres_order:
+    driver: bridge
+
+

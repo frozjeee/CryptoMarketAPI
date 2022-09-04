@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from routes import router
 from db import database 
+import uvicorn
 
 app = FastAPI()
 
@@ -17,3 +18,5 @@ async def shutdown():
 app.include_router(router)
  
 
+if __name__ == "__main__":
+    uvicorn.run("main:app", reload=True, port=8001)

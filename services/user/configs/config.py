@@ -1,24 +1,24 @@
-from fastapi import HTTPException, status
+from functools import lru_cache
+from dotenv import load_dotenv
+from fastapi import HTTPException
+from pydantic import BaseSettings
 
 
-DATABASE_URL = "postgresql://admin:admin@localhost:5432/user"
-SECRET_KEY = "09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7"
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 1
+load_dotenv("configs/.env")
 
 
-credentialsException = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
+class Settings(BaseSettings):
+    DATABASE_URL: str
+    SECRET_KEY: str
+    ALGORITHM: str
+    ACCESS_TOKEN_EXPIRE_MINUTES: int
+    BaseHTTPException: HTTPException = HTTPException
     
-forbiddenException = HTTPException(
-        status_code=status.HTTP_403_FORBIDDEN,
-        detail="Not enough rights",
-    )
-    
-unauthorizedException = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="No authorization token provided or token has expired",
-    )
+
+    class Config:
+        env_file = ".env"
+
+
+@lru_cache()
+def getSettings():
+    return Settings()

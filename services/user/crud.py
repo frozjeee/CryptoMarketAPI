@@ -1,32 +1,14 @@
+from datetime import datetime
 from aiokafka import AIOKafkaConsumer
 from fastapi.security import OAuth2PasswordBearer
-from schemas import UserIn, UserOut, UserUpdate
+from schemas import UserId, UserIn, UserOut, UserUpdate
 from db import User, database as db
-from configs.kafkaConfig import (REGISTER_TOPIC, loop,
-    KAFKA_BOOTSTRAP_SERVERS, USER_CONSUMER_GROUP, 
-    USER_DELETE_TOPIC, USER_UPDATE_TOPIC)
 from passlib.context import CryptContext
-import json
+import configs.kafkaConfig as kafkaConfig
 
 
 oauth2Scheme = OAuth2PasswordBearer(tokenUrl="login")
 pwdContext = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-
-async def createUser():
-    consumer = AIOKafkaConsumer(REGISTER_TOPIC,
-                                loop=loop,
-                                bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
-                                group_id=USER_CONSUMER_GROUP)
-    await consumer.start()
-    try:
-        async for msg in consumer:
-            payload = UserIn.parse_raw(msg.value)
-            payload.password = hashPassword(payload.password)
-            query = User.insert().values(dict(payload))
-            await db.execute(query=query)
-    finally:
-        await consumer.stop()
 
 
 async def getUserByEmail(email):
@@ -34,11 +16,29 @@ async def getUserByEmail(email):
     return await db.fetch_one(query=query, values=email)
 
 
-async def deleteUser():
-    consumer = AIOKafkaConsumer(USER_DELETE_TOPIC,
-                                loop=loop,
-                                bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
-                                group_id=USER_CONSUMER_GROUP)
+async def createUser(settings: kafkaConfig.Settings = kafkaConfig.getSettings()):
+    consumer = AIOKafkaConsumer(settings.REGISTER_TOPIC,
+                                loop=settings.loop(),
+                                bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS,
+                                group_id=settings.USER_CONSUMER_GROUP)
+    await consumer.start()
+    try:
+        async for msg in consumer:
+            payload = UserIn.parse_raw(msg.value)
+            payload.created_at = datetime.today().replace(microsecond=0)
+            payload.updated_at = datetime.today().replace(microsecond=0)
+            payload.password = hashPassword(payload.password)
+            query = User.insert().values(dict(payload))
+            await db.execute(query=query)
+    finally:
+        await consumer.stop()
+
+
+async def deleteUser(settings: kafkaConfig.Settings = kafkaConfig.getSettings()):
+    consumer = AIOKafkaConsumer(settings.USER_DELETE_TOPIC,
+                                loop=settings.loop(),
+                                bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS,
+                                group_id=settings.USER_CONSUMER_GROUP)
     await consumer.start()
     try:
         async for msg in consumer:
@@ -49,17 +49,34 @@ async def deleteUser():
         await consumer.stop()
 
 
-async def updateUser():
-    consumer = AIOKafkaConsumer(USER_UPDATE_TOPIC,
-                                loop=loop,
-                                bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
-                                group_id=USER_CONSUMER_GROUP)
+async def updateUser(settings: kafkaConfig.Settings = kafkaConfig.getSettings()):
+    consumer = AIOKafkaConsumer(settings.USER_UPDATE_TOPIC,
+                                loop=settings.loop(),
+                                bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS,
+                                group_id=settings.USER_CONSUMER_GROUP)
     await consumer.start()
     try:
         async for msg in consumer:
             payload = UserUpdate.parse_raw(msg.value)
+            payload.updated_at = datetime.today().replace(microsecond=0)
             query = User.update().where(User.c.id==payload.id) \
                                 .values(payload.dict(exclude_none=True))
+            await db.execute(query=query)
+    finally:
+        await consumer.stop()
+
+
+async def verifiedUser(settings: kafkaConfig.Settings = kafkaConfig.getSettings()):
+    consumer = AIOKafkaConsumer(settings.USER_VERIFIED_TOPIC,
+                                loop=settings.loop(),
+                                bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS,
+                                group_id=settings.USER_CONSUMER_GROUP)
+    await consumer.start()
+    try:
+        async for msg in consumer:
+            payload = UserId.parse_raw(msg.value)
+            query = User.update().where(User.c.id==payload.id) \
+                                .values(verified=True)
             await db.execute(query=query)
     finally:
         await consumer.stop()
@@ -68,8 +85,5 @@ async def updateUser():
 def hashPassword(password):
     return pwdContext.hash(password)
 
-
-def encodeToJson(payload):
-    return json.dumps(json.loads(payload.json())).encode("utf-8")
 
 

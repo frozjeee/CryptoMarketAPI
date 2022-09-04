@@ -1,14 +1,15 @@
-from uuid import UUID, uuid4
+from uuid import UUID
 from pydantic import BaseModel, EmailStr
 from typing import Optional
-from datetime import date, datetime
+from datetime import datetime
 
 
 class CurrencyIn(BaseModel):
-    id: UUID = uuid4()
+    id: Optional[UUID]
     name: str
     code: str
-    market_cap: float
+    market_cap: Optional[float]
+    quantity: float
     price: float
 
 
@@ -21,6 +22,7 @@ class CurrencyUpdate(BaseModel):
     code: Optional[str]
     name: Optional[str]
     market_cap: Optional[float]
+    quantity: Optional[float]
     price: Optional[float]
 
 

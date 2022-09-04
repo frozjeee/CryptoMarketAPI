@@ -1,11 +1,14 @@
+from uuid import uuid4
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy import (TIMESTAMP, Column, Float, 
     ForeignKey, Integer, MetaData, String, Table)
-from configs.config import DATABASE_URL
+from configs.config import getSettings
 import databases
 
 
-database = databases.Database(DATABASE_URL)
+settings = getSettings()
+
+database = databases.Database(settings.DATABASE_URL)
 
 metadata = MetaData()
 
@@ -13,10 +16,11 @@ metadata = MetaData()
 Currency = Table(
     'currency',
     metadata,
-    Column(UUID(as_uuid=True), name='id', primary_key=True, nullable=False, unique=True),
+    Column(UUID(as_uuid=True), name='id', primary_key=True, nullable=False, unique=True, default=uuid4()),
     Column('code', String(10), nullable=False),
     Column('name', String(50), nullable=False),
     Column('price', Float, nullable=False),
+    Column('quantity', Float, nullable=False),
     Column('market_cap', Float, nullable=False),
 )
 

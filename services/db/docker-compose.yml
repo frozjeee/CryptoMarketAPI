@@ -49,6 +49,37 @@ services:
     networks:
       - postgres_country
 
+  postgres_order:
+    container_name: order
+    image: postgres:latest
+    ports:
+      - "5435:5432"
+    restart: always
+    environment:
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=admin
+      - POSTGRES_DB=order
+    volumes:
+      - /data/postgres-order:/data/postgres-order
+    networks:
+      - postgres_order
+
+  postgres_wallet:
+    container_name: wallet
+    image: postgres:latest
+    ports:
+      - "5436:5432"
+    restart: always
+    environment:
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=admin
+      - POSTGRES_DB=wallet
+    volumes:
+      - /data/postgres-wallet:/data/postgres-wallet
+    networks:
+      - postgres_wallet
+
+
 volumes:
   postgres-data-user:
     driver: local
@@ -56,7 +87,10 @@ volumes:
     driver: local
   postgres-data-country:
     driver: local
-
+  postgres-data-order:
+    driver: local
+  postgres-data-wallet:
+    driver: local
 
 networks:
   postgres_user:
@@ -65,6 +99,7 @@ networks:
     driver: bridge
   postgres_country:
     driver: bridge
-
-
-
+  postgres_order:
+    driver: bridge
+  postgres_wallet:
+    driver: bridge

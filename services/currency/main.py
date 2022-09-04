@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from routes import router
 from db import database
 import asyncio
+import uvicorn
 import crud
 
 
@@ -9,6 +10,9 @@ app = FastAPI()
 
 @app.on_event("startup")
 async def startup():
+    asyncio.create_task(crud.createCurrency())
+    asyncio.create_task(crud.updateCurrency())
+    asyncio.create_task(crud.deleteCurrency())
     await database.connect()
 
 
@@ -19,6 +23,6 @@ async def shutdown():
 
 app.include_router(router)
 
-asyncio.create_task(crud.createCurrency())
-asyncio.create_task(crud.updateCurrency())
-asyncio.create_task(crud.deleteCurrency())
+
+if __name__ == "__main__":
+    uvicorn.run("main:app", reload=True, port=8004)

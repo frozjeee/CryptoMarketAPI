@@ -1,29 +1,41 @@
-from fastapi import HTTPException, status
+from functools import lru_cache
+from dotenv import load_dotenv
+from fastapi import HTTPException
+from pydantic import BaseSettings
 
 
-DATABASE_URL = "postgresql://admin:admin@localhost:5433/currency"
-SECRET_KEY = "09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7"
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 1
+load_dotenv("configs/.env")
 
 
-notFoundException = HTTPException(
-        status_code=status.HTTP_404_NOT_FOUND,
-        detail="User not found",
-    )
 
-credentialsException = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
+class Settings(BaseSettings):
+    DATABASE_URL: str
+    SECRET_KEY: str
+    ALGORITHM: str
+    ACCESS_TOKEN_EXPIRE_MINUTES: int
+    BaseHTTPException:HTTPException =  HTTPException
+    
 
-forbiddenException = HTTPException(
-        status_code=status.HTTP_403_FORBIDDEN,
-        detail="Not enough rights",
-    )
+    class Config:
+        env_file = ".env"
 
-unauthorizedException = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="No authorization token provided",
-    )
+
+@lru_cache()
+def getSettings():
+    return Settings()
+
+# notFoundException = HTTPException(
+#         status_code=status.HTTP_404_NOT_FOUND,
+#         detail="User not found",
+#     )
+
+# credentialsException = HTTPException(
+#         status_code=status.HTTP_401_UNAUTHORIZED,
+#         detail="Could not validate credentials",
+#         headers={"WWW-Authenticate": "Bearer"},
+#     )
+
+# forbiddenException = HTTPException(
+#         status_code=status.HTTP_403_FORBIDDEN,
+#         detail="Not enough rights",
+#     )

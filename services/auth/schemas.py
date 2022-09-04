@@ -13,8 +13,8 @@ class UserIn(BaseModel):
     email: EmailStr
     birthdate: date
     country_id: int
-    created_at: Optional[datetime] = datetime.today().strftime("%Y-%m-%d %H:%M:%S")
-    updated_at: Optional[datetime] = datetime.today().strftime("%Y-%m-%d %H:%M:%S")
+    created_at: Optional[datetime]
+    updated_at: Optional[datetime]
 
 
 class UserLogin(BaseModel):

@@ -9,10 +9,10 @@ services:
     environment:
       - ALLOW_ANONYMOUS_LOGIN=yes
     volumes:
-      - ./bitnami/zookeeperr:/bitnami/zookeeperr
+      - ./bitnami/zookeeper:/bitnami/zookeeper
 
   kafka:
-    image: 'bitnami/kafka:2.8.0'
+    image: 'bitnami/kafka:3.0'
     container_name: kafka
     ports:
       - "9093:9093"
@@ -28,10 +28,17 @@ services:
       - KAFKA_CFG_ADVERTISED_LISTENERS=CLIENT://kafka:9092,EXTERNAL://localhost:9093
       - KAFKA_INTER_BROKER_LISTENER_NAME=CLIENT
       - ALLOW_PLAINTEXT_LISTENER=yes
+      - KAFKA_CFG_MAX_REQUEST_SIZE=10000000
+      - KAFKA_CFG_MAX_PARTITION_FETCH_BYTES=10000000
+      - KAFKA_REPLICA_FETCH_MAX_BYTES=10000000
+      - KAFKA_PRODUCER_MAX_REQUEST_SIZE=10000000
+      - KAFKA_CONSUMER_MAX_PARTITION_FETCH_BYTES=10000000
+      - CONNECT_PRODUCER_MAX_REQUEST_SIZE=10000000
+      - CONNECT_CONSUMER_MAX_PARTITION_FETCH_BYTES=10000000
     depends_on:
       - zookeeper
     volumes:
-      - ./bitnami/kafkaa:/bitnami/kafkaa
+      - ./bitnami/kafka:/bitnami/kafka
 
   kafdrop:
     image: obsidiandynamics/kafdrop

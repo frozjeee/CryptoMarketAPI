@@ -1,15 +1,15 @@
 from datetime import datetime
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy import (TIMESTAMP, Boolean, Column, Date, Integer, MetaData, String, Table, null)
+from sqlalchemy import (TIMESTAMP, Boolean, Column, Date, 
+                        Integer, MetaData, String, Table)
+from configs.config import getSettings
 import uuid
-from sqlalchemy import create_engine
-from configs.config import DATABASE_URL
 import databases
 
 
-database = databases.Database(DATABASE_URL)
-engine = create_engine(DATABASE_URL)
+settings = getSettings()
 
+database = databases.Database(settings.DATABASE_URL)
 metadata = MetaData()
 
 User = Table(

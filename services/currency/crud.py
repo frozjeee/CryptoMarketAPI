@@ -1,24 +1,25 @@
+from uuid import uuid4
 from aiokafka import AIOKafkaConsumer
-from db import database as db
-from configs.kafkaConfig import (
-    CURRENCY_CREATE_TOPIC, CURRENCY_UPDATE_TOPIC, CURRENCY_DELETE_TOPIC,
-    KAFKA_BOOTSTRAP_SERVERS, CURRENCY_CONSUMER_GROUP, loop
-    )
 from schemas import CurrencyIn, CurrencyUpdate, CurrencyOut
-from db import Currency
-import json
+from db import Currency, database as db
+import configs.kafkaConfig as kafkaConfig
 
 
-async def createCurrency():
-    consumer = AIOKafkaConsumer(CURRENCY_CREATE_TOPIC, loop=loop,
-                                bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS, 
-                                group_id=CURRENCY_CONSUMER_GROUP)
+async def createCurrency(
+        settings: kafkaConfig.Settings = kafkaConfig.getSettings()):
+    consumer = AIOKafkaConsumer(
+                settings.CURRENCY_CREATE_TOPIC, 
+                loop=settings.loop(),
+                bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS, 
+                group_id=settings.CURRENCY_CONSUMER_GROUP)
     await consumer.start()
     try:
         async for msg in consumer:
             payload = CurrencyIn.parse_raw(msg.value)
+            payload.id = uuid4()
+            payload.market_cap = payload.quantity * payload.price
             query = Currency.insert()
-            return await db.execute(query=query, values=payload.dict())
+            await db.execute(query=query, values=payload.dict())
     finally:
         await consumer.stop()
    
@@ -29,10 +30,13 @@ async def getCurrency(currencyName):
                                   values={"currencyName": currencyName})
 
 
-async def updateCurrency():
-    consumer = AIOKafkaConsumer(CURRENCY_UPDATE_TOPIC, loop=loop,
-                                bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS, 
-                                group_id=CURRENCY_CONSUMER_GROUP)
+async def updateCurrency(
+        settings: kafkaConfig.Settings = kafkaConfig.getSettings()):
+    consumer = AIOKafkaConsumer(
+                settings.CURRENCY_UPDATE_TOPIC, 
+                loop=settings.loop(),
+                bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS, 
+                group_id=settings.CURRENCY_CONSUMER_GROUP)
     await consumer.start()
     try:
         async for msg in consumer:
@@ -44,10 +48,13 @@ async def updateCurrency():
         await consumer.stop()
     
 
-async def deleteCurrency():
-    consumer = AIOKafkaConsumer(CURRENCY_DELETE_TOPIC, loop=loop,
-                                bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
-                                group_id=CURRENCY_CONSUMER_GROUP)
+async def deleteCurrency(
+        settings: kafkaConfig.Settings = kafkaConfig.getSettings()):
+    consumer = AIOKafkaConsumer(
+                settings.CURRENCY_DELETE_TOPIC, 
+                loop=settings.loop(),
+                bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS, 
+                group_id=settings.CURRENCY_CONSUMER_GROUP)
     await consumer.start()
     try:
         async for msg in consumer:
@@ -56,7 +63,3 @@ async def deleteCurrency():
             return await db.execute(query=query)
     finally:
         await consumer.stop()
-
-
-def encodeToJson(payload):
-    return json.dumps(json.loads(payload.json())).encode("utf-8")
