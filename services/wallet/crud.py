@@ -1,5 +1,5 @@
 from datetime import datetime
-from aiokafka import AIOKafkaConsumer
+from aiokafka import AIOKafkaConsumer, AIOKafkaProducer
 from schemas import WalletIn
 from db import (
     Wallet,
@@ -60,23 +60,34 @@ async def createMainWallet(settings: kafkaConfig.Settings = kafkaConfig.getSetti
         await consumer.stop()
 
 
-async def getOrderMoney():
-    userBalanceQuery = MainWallet.select() \
-                                        .where(MainWallet.c.user_id == order.user_id) \
-                                        .where(MainWallet.c.currency_id == User)
+async def getOrderMoney(settings: kafkaConfig.Settings = kafkaConfig.getSettings()):
+    consumer = AIOKafkaConsumer(settings.ORDER_VALIDATE_TOPIC,
+                                loop=settings.loop(),
+                                bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS,
+                                group_id=settings.ORDER_CONSUMER_GROUP,
+                                isolation_level="read_committed")
 
-    userBalance = await wallet_db.fetch_one(userBalanceQuery)
-    if order.quantity * order.price > userBalance.quantity:
-        pass
-    else:
-        if order.type == "buy":
-            walletQuery = Wallet.update() \
-                .where(Wallet.c.id == order.user_id) \
-                .where(Wallet.c.currency_id == order.currency_id) \
-                .values(amount=userBalance.quantity - (order.quantity * order.price))
-        elif order.type == "sell":
-            walletQuery = Wallet.update() \
-                .where(Wallet.c.id == order.user_id) \
-                .where(Wallet.c.currency_id == order.currency_id) \
-                .values(amount=userBalance.quantity - order.quantity)
+    await consumer.start()
+    try:
+        async for msg in consumer:
+            order = msg.value
+            userBalanceQuery = MainWallet.select() \
+                                        .where(MainWallet.c.user_id == order.user_id) \
+                                        .where(MainWallet.c.currency_id == order)
+            userBalance = await db.fetch_one(userBalanceQuery)
+            if order.quantity * order.price > userBalance.quantity:
+                pass
+            else:
+                if order.type == "buy":
+                    walletQuery = Wallet.update() \
+                        .where(Wallet.c.id == order.user_id) \
+                        .where(Wallet.c.currency_id == order.currency_id) \
+                        .values(amount=userBalance.quantity - (order.quantity * order.price))
+                elif order.type == "sell":
+                    walletQuery = Wallet.update() \
+                        .where(Wallet.c.id == order.user_id) \
+                        .where(Wallet.c.currency_id == order.currency_id) \
+                        .values(amount=userBalance.quantity - order.quantity)
+    finally:
+        consumer.stop()
                         
