@@ -12,13 +12,15 @@ app = FastAPI()
 @app.on_event("startup")
 async def startup():
     await currency_database.connect()
+    await order_database.connect()
+    asyncio.create_task()
     asyncio.create_task(engine.receiveOrder()) 
 
 
 @app.on_event("shutdown")
 async def shutdown():
     await currency_database.disconnect()
-
+    await order_database.disconnect()
 
 if __name__ == "__main__":
     uvicorn.run("main:app", reload=True, port=8006)

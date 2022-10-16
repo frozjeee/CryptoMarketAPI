@@ -13,6 +13,12 @@ class CurrencyIn(BaseModel):
     price: float
 
 
+class MainCurrencyIn(BaseModel):
+    id: Optional[UUID]
+    name: str
+    code: str
+
+
 class CurrencyOut(BaseModel):
     id: UUID
 

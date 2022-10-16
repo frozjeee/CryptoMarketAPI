@@ -40,8 +40,7 @@ async def transactionOrders(kafkaSettings: kafkaConfig.Settings = kafkaConfig.ge
                         .where(Order.c.id==matchedOrders.buyOrder.id).values(status="fulfilled")
                     buyUpdateOrderQuery = Order.update() \
                         .where(Order.c.id==matchedOrders.sellOrder.id).values(status="fulfilled")
-                    orderDB.execute(buyUpdateOrderQuery)
-                    orderDB.execute(sellUpdateOrderQuery)
+                    orderDB.execute([buyUpdateOrderQuery, sellUpdateOrderQuery])
                 else:
                     if matchedOrders.type == "buy":
                         updateOrderQuery = Order.update() \

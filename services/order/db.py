@@ -1,8 +1,6 @@
-from datetime import datetime
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy import (TIMESTAMP, Column, Float, Integer, MetaData, String, Table)
 from configs.config import getSettings
-import uuid
 import databases
 import sqlalchemy.types as types
 
@@ -28,7 +26,7 @@ class OrderType(types.TypeDecorator):
 
 
 class OrderStatus(types.TypeDecorator):
-    orderStatuses = ['pending', 'filled', 'cancelled']
+    orderStatuses = ['pending', 'fulfilled', 'cancelled']
     impl = types.String
     cache_ok = True
 
@@ -44,14 +42,14 @@ class OrderStatus(types.TypeDecorator):
 Order = Table(
     'order',
     metadata,
-    Column(UUID(as_uuid=True), name='id', primary_key=True, default=uuid.uuid4(), unique=True),
-    Column(UUID(as_uuid=True), name='user_id', default=uuid.uuid4()),
-    Column(UUID(as_uuid=True), name='currency_id', default=uuid.uuid4()),
+    Column(UUID(as_uuid=True), name='id', primary_key=True, unique=True),
+    Column(UUID(as_uuid=True), name='user_id'),
+    Column(UUID(as_uuid=True), name='currency_id'),
     Column('type', OrderType, nullable=False),
     Column('price', Float, nullable=False),
     Column('quantity', Float, nullable=False),
     Column('status', OrderStatus, nullable=False),
-    Column('ordered_at', TIMESTAMP, nullable=False, default=datetime.today())
+    Column('ordered_at', TIMESTAMP, nullable=False)
 )
 
 

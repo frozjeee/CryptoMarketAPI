@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from routes import router
-from db import database, auth_database
+from db import database
 import asyncio
 import crud
 

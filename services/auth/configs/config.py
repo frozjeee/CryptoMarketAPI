@@ -1,6 +1,9 @@
 from functools import lru_cache
+
 from pydantic import BaseSettings
+
 from dotenv import load_dotenv
+
 from fastapi import HTTPException
 
 
@@ -14,7 +17,6 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int
     BaseHTTPException: HTTPException = HTTPException
 
-
     class Config:
         env_file = ".env"
 
@@ -22,6 +24,3 @@ class Settings(BaseSettings):
 @lru_cache()
 def getSettings():
     return Settings()
-
-
-

@@ -1,16 +1,31 @@
 from uuid import uuid4
-from aiokafka import AIOKafkaConsumer
-from schemas import CurrencyIn, CurrencyUpdate, CurrencyOut
-from db import Currency, database as db
-import configs.kafkaConfig as kafkaConfig
 
+from aiokafka import AIOKafkaConsumer
+
+from schemas import (
+    CurrencyIn,
+    CurrencyUpdate,
+    CurrencyOut,
+    MainCurrencyIn
+)
+
+from db import (
+    Currency,
+    MainCurrency,
+    database as db
+)
+
+import configs.kafkaConfig as kafkaConfig
+    
 
 async def createCurrency(
-        settings: kafkaConfig.Settings = kafkaConfig.getSettings()):
+        settings: kafkaConfig.Settings = kafkaConfig.getSettings()
+):
+
     consumer = AIOKafkaConsumer(
-                settings.CURRENCY_CREATE_TOPIC, 
+                settings.CURRENCY_CREATE_TOPIC,
                 loop=settings.loop(),
-                bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS, 
+                bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS,
                 group_id=settings.CURRENCY_CONSUMER_GROUP)
     await consumer.start()
     try:
@@ -18,42 +33,71 @@ async def createCurrency(
             payload = CurrencyIn.parse_raw(msg.value)
             payload.id = uuid4()
             payload.market_cap = payload.quantity * payload.price
+
             query = Currency.insert()
+            await db.execute(query=query, values=payload.dict())
+
+    finally:
+        await consumer.stop()
+
+
+async def createMainCurrency(
+        settings: kafkaConfig.Settings = kafkaConfig.getSettings()
+):
+
+    consumer = AIOKafkaConsumer(
+                settings.MAIN_CURRENCY_CREATE_TOPIC,
+                loop=settings.loop(),
+                bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS,
+                group_id=settings.CURRENCY_CONSUMER_GROUP)
+    await consumer.start()
+    try:
+        async for msg in consumer:
+            payload = MainCurrencyIn.parse_raw(msg.value)
+            payload.id = uuid4()
+            query = MainCurrency.insert()
             await db.execute(query=query, values=payload.dict())
     finally:
         await consumer.stop()
-   
+
 
 async def getCurrency(currencyName):
-        query = Currency.select()
-        return await db.fetch_one(query=query, 
-                                  values={"currencyName": currencyName})
+    query = Currency.select()
+    return await db.fetch_one(
+        query=query,
+        values={"currencyName": currencyName}
+    )
 
 
 async def updateCurrency(
-        settings: kafkaConfig.Settings = kafkaConfig.getSettings()):
+        settings: kafkaConfig.Settings = kafkaConfig.getSettings()
+):
+
     consumer = AIOKafkaConsumer(
-                settings.CURRENCY_UPDATE_TOPIC, 
+                settings.CURRENCY_UPDATE_TOPIC,
                 loop=settings.loop(),
-                bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS, 
+                bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS,
                 group_id=settings.CURRENCY_CONSUMER_GROUP)
     await consumer.start()
     try:
         async for msg in consumer:
             payload = CurrencyUpdate.parse_raw(msg.value)
-            query = Currency.update().where(Currency.c.id == payload.id) \
-                                    .values(payload.dict(exclude_none=True))
+            query = Currency.update() \
+                .where(Currency.c.id == payload.id) \
+                .values(payload.dict(exclude_none=True))
             return await db.execute(query=query)
     finally:
         await consumer.stop()
-    
+
 
 async def deleteCurrency(
-        settings: kafkaConfig.Settings = kafkaConfig.getSettings()):
+        settings: kafkaConfig.Settings = kafkaConfig.getSettings()
+):
+
     consumer = AIOKafkaConsumer(
-                settings.CURRENCY_DELETE_TOPIC, 
+                settings.CURRENCY_DELETE_TOPIC,
                 loop=settings.loop(),
-                bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS, 
+                bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS,
                 group_id=settings.CURRENCY_CONSUMER_GROUP)
     await consumer.start()
     try:

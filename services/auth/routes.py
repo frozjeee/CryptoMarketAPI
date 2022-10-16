@@ -13,27 +13,34 @@ router = APIRouter()
 @router.post("/login")
 async def login(
         payload: UserLogin,
-        settings: config.Settings = Depends(config.getSettings)):
+        settings: config.Settings = Depends(config.getSettings)
+):
+
     user = await crud.authenticateUser(payload)
     if not user:
         raise settings.BaseHTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="User does not exist")
+
     user = TokenData.parse_obj(user)
     accessToken = crud.createAccessToken(user)
+
     return {
         "status_code": status.HTTP_200_OK,
-        "access_token": accessToken, 
+        "access_token": accessToken,
         "token_type": "Bearer"}
 
 
 @router.post("/register")
 async def register(
-        payload: UserIn, 
+        payload: UserIn,
         settings: config.Settings = Depends(config.getSettings),
-        kafkaSettings: kafkaConfig.Settings = Depends(kafkaConfig.getSettings)):
-    producer = AIOKafkaProducer(loop=kafkaSettings.loop(), 
-                                bootstrap_servers=kafkaSettings.KAFKA_BOOTSTRAP_SERVERS)
+        kafkaSettings: kafkaConfig.Settings = Depends(kafkaConfig.getSettings)
+):
+    producer = AIOKafkaProducer(
+        loop=kafkaSettings.loop(),
+        bootstrap_servers=kafkaSettings.KAFKA_BOOTSTRAP_SERVERS
+    )
     await producer.start()
     try:
         user = await crud.getUser(payload.email)
@@ -49,6 +56,3 @@ async def register(
             "detail": "User registered successfully"}
     finally:
         await producer.stop()
-
-
-

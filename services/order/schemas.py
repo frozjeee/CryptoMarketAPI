@@ -12,6 +12,7 @@ class OrderIn(BaseModel):
     price: float
     quantity: float
     status: str
+    main_currency: str
     ordered_at: Optional[datetime]
 
 

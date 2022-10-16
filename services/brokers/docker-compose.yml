@@ -9,7 +9,7 @@ services:
     environment:
       - ALLOW_ANONYMOUS_LOGIN=yes
     volumes:
-      - ./bitnami/zookeeper:/bitnami/zookeeper
+      - zookeeper:/bitnami/zookeeper
 
   kafka:
     image: 'bitnami/kafka:3.0'
@@ -28,17 +28,10 @@ services:
       - KAFKA_CFG_ADVERTISED_LISTENERS=CLIENT://kafka:9092,EXTERNAL://localhost:9093
       - KAFKA_INTER_BROKER_LISTENER_NAME=CLIENT
       - ALLOW_PLAINTEXT_LISTENER=yes
-      - KAFKA_CFG_MAX_REQUEST_SIZE=10000000
-      - KAFKA_CFG_MAX_PARTITION_FETCH_BYTES=10000000
-      - KAFKA_REPLICA_FETCH_MAX_BYTES=10000000
-      - KAFKA_PRODUCER_MAX_REQUEST_SIZE=10000000
-      - KAFKA_CONSUMER_MAX_PARTITION_FETCH_BYTES=10000000
-      - CONNECT_PRODUCER_MAX_REQUEST_SIZE=10000000
-      - CONNECT_CONSUMER_MAX_PARTITION_FETCH_BYTES=10000000
     depends_on:
       - zookeeper
     volumes:
-      - ./bitnami/kafka:/bitnami/kafka
+      - kafka:/bitnami/kafka
 
   kafdrop:
     image: obsidiandynamics/kafdrop
@@ -52,4 +45,23 @@ services:
     depends_on:
       - kafka
 
-    
+  rabbitmq:
+    image: 'bitnami/rabbitmq:3.10'
+    container_name: rabbitmq
+    environment:
+      - RABBITMQ_USERNAME=admin
+      - RABBITMQ_PASSWORD=admin
+      - RABBITMQ_NODE_TYPE=stats
+    ports:
+      - '5672:5672'
+    volumes:
+      - rabbitmq:/bitnami/rabbitmq
+
+
+volumes:
+  rabbitmq:
+    driver: local
+  kafka:
+    driver: local
+  zookeeper:
+    driver: local

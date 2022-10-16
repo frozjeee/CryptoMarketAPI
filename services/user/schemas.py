@@ -15,6 +15,7 @@ class UserIn(BaseModel):
     email: EmailStr
     birthdate: date
     country_id: int
+    main_currency: str = "USD"
     created_at: Optional[datetime]
     updated_at: Optional[datetime]
 
@@ -42,6 +43,7 @@ class UserUpdate(BaseModel):
     email: Optional[EmailStr]
     birthdate: Optional[date]
     country_id: Optional[int]
+    main_currency: Optional[str]
     updated_at: Optional[datetime] = datetime.today()
 
 

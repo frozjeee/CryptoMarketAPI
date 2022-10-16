@@ -80,18 +80,6 @@ services:
       - postgres_wallet
 
 
-volumes:
-  postgres-data-user:
-    driver: local
-  postgres-data-currency:
-    driver: local
-  postgres-data-country:
-    driver: local
-  postgres-data-order:
-    driver: local
-  postgres-data-wallet:
-    driver: local
-
 networks:
   postgres_user:
     driver: bridge

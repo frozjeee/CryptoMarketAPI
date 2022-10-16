@@ -6,7 +6,9 @@ import configs.config as config
 
 def validateToken(
     token: str,
-    settings: config.Settings = config.getSettings()):
+    settings: config.Settings = config.getSettings()
+):
+
     if not token:
         raise settings.BaseHTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

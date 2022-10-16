@@ -18,10 +18,12 @@ async def getCurrency(currencyName: str):
 
 @router.post("/")
 async def createCurrency(
-        payload: CurrencyIn, 
+        payload: CurrencyIn,
         settings: config.Settings = Depends(config.getSettings),
         kafkaSettings: kafkaConfig.Settings = Depends(kafkaConfig.getSettings),
-        Authorization: Optional[str] = Header(None)):
+        Authorization: Optional[str] = Header(None)
+):
+
     tokenData = authorization.validateToken(Authorization)
     if not tokenData.is_superuser:
         raise settings.BaseHTTPException(
@@ -29,13 +31,13 @@ async def createCurrency(
             detail="Not enough rights"
         )
     producer = AIOKafkaProducer(
-                loop=kafkaSettings.loop(), 
+                loop=kafkaSettings.loop(),
                 bootstrap_servers=kafkaSettings.KAFKA_BOOTSTRAP_SERVERS)
     await producer.start()
     try:
         currencyJson = payload.json().encode("utf-8")
         await producer.send_and_wait(
-                topic=kafkaSettings.CURRENCY_CREATE_TOPIC, 
+                topic=kafkaSettings.CURRENCY_CREATE_TOPIC,
                 value=currencyJson)
     finally:
         await producer.stop()
@@ -54,13 +56,13 @@ async def updateCurrency(
             detail="Not enough rights"
         )
     producer = AIOKafkaProducer(
-                loop=kafkaSettings.loop(), 
+                loop=kafkaSettings.loop(),
                 bootstrap_servers=kafkaSettings.KAFKA_BOOTSTRAP_SERVERS)
     await producer.start()
     try:
         currencyJson = payload.json().encode("utf-8")
         await producer.send_and_wait(
-                topic=kafkaSettings.CURRENCY_UPDATE_TOPIC, 
+                topic=kafkaSettings.CURRENCY_UPDATE_TOPIC,
                 value=currencyJson)
     finally:
         await producer.stop()
@@ -71,24 +73,25 @@ async def deleteCurrency(
         payload: CurrencyOut,
         settings: config.Settings = Depends(config.getSettings),
         kafkaSettings: kafkaConfig.Settings = Depends(kafkaConfig.getSettings),
-        Authorization: Optional[str] = Header(None)):
+        Authorization: Optional[str] = Header(None)
+):
+
     tokenData = authorization.validateToken(Authorization)
+
     if not tokenData.is_superuser:
         raise settings.BaseHTTPException(
             status=status.HTTP_403_FORBIDDEN,
             detail="Not enough rights"
         )
+
     producer = AIOKafkaProducer(
-                loop=kafkaSettings.loop(), 
+                loop=kafkaSettings.loop(),
                 bootstrap_servers=kafkaSettings.KAFKA_BOOTSTRAP_SERVERS)
     await producer.start()
     try:
         currencyJson = payload.json().encode("utf-8")
         await producer.send_and_wait(
-                topic=kafkaSettings.CURRENCY_DELETE_TOPIC, 
+                topic=kafkaSettings.CURRENCY_DELETE_TOPIC,
                 value=currencyJson)
     finally:
         await producer.stop()
-
-
-

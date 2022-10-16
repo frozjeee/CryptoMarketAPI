@@ -1,8 +1,7 @@
 from datetime import datetime
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy import (TIMESTAMP, Column, Float, Integer, MetaData, String, Table)
+from sqlalchemy import (TIMESTAMP, Column, Float, MetaData, String, Table)
 from configs.config import getSettings
-import uuid
 import databases
 import sqlalchemy.types as types
 
@@ -63,6 +62,16 @@ Wallet = Table(
     walletMetadata,
     Column(UUID(), name='user_id'),
     Column(UUID(), name='currency_id'),
+    Column('quantity', Float, nullable=False),
+    Column('created_at', TIMESTAMP, nullable=False)
+)
+
+
+MainWallet = Table(
+    'main_wallet',
+    metadata,
+    Column(UUID(), name='id', primary_key=True, unique=True),
+    Column(UUID(), name='user_id'),
     Column('quantity', Float, nullable=False),
     Column('created_at', TIMESTAMP, nullable=False)
 )

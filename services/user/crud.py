@@ -25,9 +25,9 @@ async def createUser(settings: kafkaConfig.Settings = kafkaConfig.getSettings())
     try:
         async for msg in consumer:
             payload = UserIn.parse_raw(msg.value)
-            payload.created_at = datetime.today().replace(microsecond=0)
+            payload.password = pwdContext.hash(payload.password)
             payload.updated_at = datetime.today().replace(microsecond=0)
-            payload.password = hashPassword(payload.password)
+            payload.created_at = datetime.today().replace(microsecond=0)
             query = User.insert().values(dict(payload))
             await db.execute(query=query)
     finally:
@@ -80,10 +80,3 @@ async def verifiedUser(settings: kafkaConfig.Settings = kafkaConfig.getSettings(
             await db.execute(query=query)
     finally:
         await consumer.stop()
-
-
-def hashPassword(password):
-    return pwdContext.hash(password)
-
-
-

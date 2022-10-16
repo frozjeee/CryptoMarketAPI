@@ -2,13 +2,6 @@
 __pycache__/
 *.py[cod]
 
-# Directories for migrations
-versions/
-
 # Modules
 venv/*
 bitnami/
-
-# Scripts
-enter_venv.bat
-build.bat

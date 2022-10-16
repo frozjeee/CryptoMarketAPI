@@ -1,6 +1,9 @@
-from functools import lru_cache
 from pydantic import BaseSettings
+
+from functools import lru_cache
+
 from dotenv import load_dotenv
+
 import asyncio
 
 
@@ -14,7 +17,6 @@ class Settings(BaseSettings):
     USER_DELETE_TOPIC: str
     KAFKA_CONSUMER_GROUP: str
     loop = asyncio.get_event_loop
-
 
     class Config:
         env_file = ".kafka.env"

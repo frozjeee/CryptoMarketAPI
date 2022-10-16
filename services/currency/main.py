@@ -8,9 +8,11 @@ import crud
 
 app = FastAPI()
 
+
 @app.on_event("startup")
 async def startup():
     asyncio.create_task(crud.createCurrency())
+    asyncio.create_task(crud.createMainCurrency())
     asyncio.create_task(crud.updateCurrency())
     asyncio.create_task(crud.deleteCurrency())
     await database.connect()

@@ -1,9 +1,22 @@
-from aiokafka import AIOKafkaConsumer
 from db import Country, database as db
-from configs.kafkaConfig import (COUNTRY_CREATE_TOPIC, 
-    COUNTRY_UPDATE_TOPIC, COUNTRY_DELETE_TOPIC,
-    KAFKA_BOOTSTRAP_SERVERS, COUNTRY_CONSUMER_GROUP, loop)
-from schemas import CountryOut, CountryUpdate, CountryIn
+
+from aiokafka import AIOKafkaConsumer
+
+from configs.kafkaConfig import (
+    COUNTRY_CREATE_TOPIC, 
+    COUNTRY_UPDATE_TOPIC, 
+    COUNTRY_DELETE_TOPIC,
+    KAFKA_BOOTSTRAP_SERVERS,
+    COUNTRY_CONSUMER_GROUP,
+    loop
+)
+
+from schemas import (
+    CountryOut,
+    CountryUpdate,
+    CountryIn
+)
+
 import json
 
 
@@ -20,11 +33,16 @@ async def createCountry():
             await db.execute(query=query)
     finally:
         await consumer.stop()
-   
+
 
 async def getCountry(countryName: str):
-    query = Country.select()
+    query = Country.select().where()
     return await db.fetch_one(query=query, values={"countryName": countryName})
+
+
+async def getAllCountry():
+    query = Country.select()
+    return await db.fetch_all(query=query)
 
 
 async def updateCountry():

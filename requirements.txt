@@ -1,9 +1,14 @@
+aio_pika==8.2.4
 aiokafka==0.7.2
 alembic==1.7.7
 databases==0.5.5
-fastapi==0.78.0
+fastapi==0.85.1
+idanalyzer==1.2.2
 jose==1.0.0
 passlib==1.7.4
 pydantic==1.9.0
+pyllist==0.3
+python-dotenv==0.21.0
 python_jose==3.3.0
 SQLAlchemy==1.4.35
+uvicorn==0.18.3
