@@ -1,4 +1,2 @@
-cd venv/Scripts
-activate
-cd../..
+venv/Scripts/activate
 PAUSE

@@ -1,10 +1,5 @@
 from aiokafka import AIOKafkaConsumer, AIOKafkaProducer
-from schemas import OrderIn, OrderOut
-from db import (
-    Wallet, wallet_db,
-    Order, order_db,
-    MainWallet
-)
+from schemas import OrderIn
 import configs.kafkaConfig as kafkaConfig 
 
 
@@ -17,21 +12,17 @@ async def validateOrder(kafkaSettings: kafkaConfig.Settings = kafkaConfig.getSet
 
     producer = AIOKafkaProducer(loop=kafkaSettings.loop(), 
                                 bootstrap_servers=kafkaSettings.KAFKA_BOOTSTRAP_SERVERS,
-                                transactional_id=kafkaSettings)
+                                transactional_id=kafkaSettings.TRANSACTIONAL_ID)
     await producer.start()
     await consumer.start()
     try:
         async for msg in consumer:
             order = OrderIn.parse_raw(msg.value)
+            orderJson = order.json().encode("utf-8")
             try:
                 async with producer.transaction():
-                    
-                        
-                        orderQuery = Order.insert().values(dict(order))
-                        await order_db.execute(orderQuery)
-                        orderJson = order.json().encode("utf-8")
-                        
-                        await producer.send_and_wait(topic=kafkaSettings.ORDER_MATCH_TOPIC, value=orderJson)
+                    await producer.send_and_wait(topic=kafkaSettings.TRANSACT_ORDER_MONEY, value=orderJson)
+                    await producer.send_and_wait(topic=kafkaSettings.ORDER_MATCH_TOPIC, value=orderJson)
             finally:
                 await producer.stop()
     finally:

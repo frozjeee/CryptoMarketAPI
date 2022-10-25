@@ -12,6 +12,8 @@ class Settings(BaseSettings):
     ORDER_VALIDATE_TOPIC: str
     ORDER_MATCH_TOPIC: str
     ORDER_CONSUMER_GROUP: str
+    TRANSACT_ORDER_MONEY: str
+    TRANSACTIONAL_ID: str
     loop = asyncio.get_event_loop
 
     class Config:

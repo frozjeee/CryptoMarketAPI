@@ -16,7 +16,7 @@ from configs.kafkaConfig import loop
 
 async def validateToken():
     connection = await connect_robust(
-        "amqp://admin:admin@localhost/",
+        "amqp://admin:admin@localhost:5672/",
         client_properties={"connection_name": "callee"},
     )
 

@@ -4,21 +4,25 @@ from typing import Optional
 from datetime import datetime
 
 
-class WalletIn(BaseModel):
+class OrderIn(BaseModel):
     id: Optional[UUID]
-    quantity: Optional[float] = 0
-    created_at: Optional[datetime]
-    
-
-class WalletUpdate(BaseModel):
-    id: UUID
     user_id: UUID
     currency_id: UUID
-    quantity: Optional[float]
+    type: str
+    price: float
+    quantity: float
+    status: str
+    main_currency: str
+    ordered_at: Optional[datetime]
 
 
-class WalletOut(BaseModel):
+class OrderOut(BaseModel):
     id: UUID
+
+
+class UserVerify(BaseModel):
+    verified: bool
+    updated_at: Optional[datetime]
 
 
 class TokenData(BaseModel):

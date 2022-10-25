@@ -46,12 +46,11 @@ services:
       - kafka
 
   rabbitmq:
-    image: 'bitnami/rabbitmq:3.10'
+    image: 'rabbitmq:3.10'
     container_name: rabbitmq
     environment:
-      - RABBITMQ_USERNAME=admin
-      - RABBITMQ_PASSWORD=admin
-      - RABBITMQ_NODE_TYPE=stats
+      - RABBITMQ_DEFAULT_USER=admin
+      - RABBITMQ_DEFAULT_PASS=admin
     ports:
       - '5672:5672'
     volumes:
