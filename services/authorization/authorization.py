@@ -8,19 +8,14 @@ from configs.config import (
 )
 from schemas import TokenData
 
-from aio_pika import Message, connect_robust
-from aio_pika.abc import AbstractIncomingMessage
+from aio_pika import connect
 from aio_pika.patterns import RPC
 from configs.kafkaConfig import loop
 
 
 async def validateToken():
-    connection = await connect_robust(
-        "amqp://admin:admin@localhost:5672/",
-        client_properties={"connection_name": "callee"},
-    )
+    connection = await connect("amqp://guest:guest@localhost/")
 
-    # Creating channel
     channel = await connection.channel()
 
     rpc = await RPC.create(channel)

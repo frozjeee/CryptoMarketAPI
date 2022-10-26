@@ -47,12 +47,9 @@ services:
 
   rabbitmq:
     image: 'rabbitmq:3.10'
-    container_name: rabbitmq
-    environment:
-      - RABBITMQ_DEFAULT_USER=admin
-      - RABBITMQ_DEFAULT_PASS=admin
+    container_name: rabbit_mq
     ports:
-      - '5672:5672'
+      - '5671:5671'
     volumes:
       - rabbitmq:/bitnami/rabbitmq
 
