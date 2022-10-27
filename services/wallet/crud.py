@@ -1,5 +1,6 @@
 from datetime import datetime
-from aiokafka import AIOKafkaConsumer, AIOKafkaProducer
+from fastapi import HTTPException, status
+from aiokafka import AIOKafkaConsumer
 from schemas import WalletIn
 from db import (
     Wallet,
@@ -8,7 +9,8 @@ from db import (
     database as db,
     currency_database as currency_db
 )
-import configs.kafkaConfig as kafkaConfig 
+from services.wallet.schemas import WalletTopUp
+import configs.kafkaConfig as kafkaConfig
 
 
 async def getWallet(wallet: str):
@@ -71,12 +73,12 @@ async def transactOrderMoney(settings: kafkaConfig.Settings = kafkaConfig.getSet
     try:
         async for msg in consumer:
             order = msg.value
-            userMainBalanceQuery = MainWallet.select() \
-                                        .where(MainWallet.c.user_id == order.user_id) \
-                                        .where(MainWallet.c.currency_id == order.main_currency)
-            userBalanceQuery = Wallet.select() \
-                                        .where(Wallet.c.user_id == order.user_id) \
-                                        .where(Wallet.c.currency_id == order.currency)
+            userMainBalanceQuery = MainWallet.select().\
+                                    where(MainWallet.c.user_id == order.user_id). \
+                                    where(MainWallet.c.currency_id == order.main_currency)
+            userBalanceQuery = Wallet.select().\
+                                        where(Wallet.c.user_id == order.user_id). \
+                                        where(Wallet.c.currency_id == order.currency)
                                         
             userMainBalance = await db.fetch_one(userMainBalanceQuery)
             userBalance = await db.fetch_one(userBalanceQuery)
@@ -85,19 +87,30 @@ async def transactOrderMoney(settings: kafkaConfig.Settings = kafkaConfig.getSet
                 (order.quantity > userBalance.quantity):
 
                 if order.type == "buy":
-                    walletQuery = Wallet.update() \
-                        .where(Wallet.c.id == order.user_id) \
-                        .where(Wallet.c.currency_id == order.currency_id) \
-                        .values(amount=userMainBalance.quantity - (order.quantity * order.price))
+                    walletQuery = Wallet.update().\
+                        where(Wallet.c.id == order.user_id). \
+                        where(Wallet.c.currency_id == order.currency_id). \
+                        values(amount=userMainBalance.quantity - (order.quantity * order.price))
+                        
                 elif order.type == "sell":
-                    walletQuery = Wallet.update() \
-                        .where(Wallet.c.id == order.user_id) \
-                        .where(Wallet.c.currency_id == order.currency_id) \
-                        .values(amount=userBalance.quantity - order.quantity)
+                    walletQuery = Wallet.update().\
+                        where(Wallet.c.id == order.user_id). \
+                        where(Wallet.c.currency_id == order.currency_id). \
+                        values(amount=userBalance.quantity - order.quantity)
                     
                 db.execute(walletQuery)
             else:
-                pass
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Not enough money")
     finally:
         consumer.stop()
                         
+
+async def topUpWallet(walletTopUp: WalletTopUp):
+    query = Wallet.update().\
+        where(Wallet.user_id == walletTopUp.user_id). \
+        where(Wallet.currency_id == walletTopUp.currency_id). \
+        values(quantity=walletTopUp.quantity)
+
+    await db.execute(query=query)

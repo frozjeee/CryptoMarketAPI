@@ -1,5 +1,6 @@
+from typing import Optional
 from aiokafka import AIOKafkaConsumer, AIOKafkaProducer
-from schemas import OrderIn, OrderLL, MatchedOrders
+from schemas import OrderIn, OrderLL, MatchedOrder
 from pyllist import sllist, sllistnode
 from db import (
     Currency, Order,
@@ -11,7 +12,7 @@ import json
 
 
 async def receiveOrder(kafkaSettings: kafkaConfig.Settings = kafkaConfig.getSettings()):
-    ordersQuery = Order.select().where(Order.c.status=="pending")
+    ordersQuery = Order.select().where(Order.c.status == "pending")
     orders = await order_db.fetch_all(ordersQuery)
     
     currenciesOrders = {}
@@ -37,45 +38,50 @@ async def receiveOrder(kafkaSettings: kafkaConfig.Settings = kafkaConfig.getSett
             order = OrderIn.parse_raw(msg.value)
             addToOrders(order, currenciesOrders)
             while True:
-                matchedOrders = matchOrders(currenciesOrders, order.currency_id)
-                if not matchedOrders:
+                orderMatch: MatchedOrder = matchOrder(currenciesOrders, order.currency_id)
+                if not orderMatch:
                     break
-                matchedOrders = json.dumps(matchedOrders).encode("utf-8")
-                producer.send_and_wait(topic=kafkaSettings.ORDER_FULFILL_TOPIC, value=matchedOrders)
-                if not matchedOrders.restart:
+                orderMatch = json.dumps(orderMatch).encode("utf-8")
+                producer.send_and_wait(topic=kafkaSettings.ORDER_FULFILL_TOPIC, value=orderMatch)
+                if not orderMatch.restart:
                     break
     finally:
         await producer.stop()
         await consumer.stop()
 
 
-def matchOrders(currenciesOrders, currencyId):
-    orderMatches = None
+def matchOrder(currenciesOrders, currencyId) -> Optional[MatchedOrder]:
+    orderMatch = None
     buyOrder: sllistnode = currenciesOrders[currencyId].buy.first
     sellOrders: sllist = currenciesOrders[currencyId].sell
     buyOrders: sllist = currenciesOrders[currencyId].buy
     for orderIndex, sellOrder in enumerate(sellOrders.iternodes()):
         if sellOrder.value.price <= buyOrder.value.price:
+
             if buyOrder.value.quantity < sellOrder.value.quantity:
-                orderMatches = MatchedOrders(buyOrder.value, sellOrder.value, "buy", False)
+                orderMatch = MatchedOrder(buyOrder.value, sellOrder.value, "buy", False)
+
                 sellOrders.nodeat(orderIndex).value.quantity = \
-                                    buyOrder.value.quantity - sellOrder.value.quantity
+                                       buyOrder.value.quantity - sellOrder.value.quantity
                 buyOrders.popleft()  
                 break
+
             elif buyOrder.value.quantity > sellOrder.value.quantity:
-                orderMatches = MatchedOrders(buyOrder.value, sellOrder.value, "sell", True)
+                orderMatch = MatchedOrder(buyOrder.value, sellOrder.value, "sell", True)
+
                 buyOrders.nodeat(0).value.quantity = \
                                     buyOrder.value.quantity - sellOrder.value.quantity
                 sellOrders.remove(sellOrder)
                 break
             else:
-                orderMatches = MatchedOrders(buyOrder.value, sellOrder.value, "both", False)
+                orderMatch = MatchedOrder(buyOrder.value, sellOrder.value, "both", False)
+
                 buyOrders.popleft()  
                 sellOrders.remove(sellOrder)
                 break
-    if not orderMatches:
+    if not orderMatch:
         return None
-    return orderMatches
+    return orderMatch
 
 
 def addToOrders(order, currenciesOrders):

@@ -15,7 +15,7 @@ class OrderIn(BaseModel):
     ordered_at: datetime
 
 
-class MatchedOrders(BaseModel):
+class MatchedOrder(BaseModel):
     buyOrder: OrderIn
     sellOrder: OrderIn
     type: str
@@ -31,5 +31,5 @@ class OrderLL(BaseModel):
 
 
 class MatchedOrdersAndAllOrders(BaseModel):
-    matchedOrders: MatchedOrders
+    matchedOrders: MatchedOrder
     currenciesOrders: list
