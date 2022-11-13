@@ -2,13 +2,6 @@ from uuid import uuid4
 
 from aiokafka import AIOKafkaConsumer
 
-from schemas import (
-    CurrencyIn,
-    CurrencyUpdate,
-    CurrencyOut,
-    MainCurrencyIn
-)
-
 from db import (
     Currency,
     MainCurrency,
@@ -16,29 +9,17 @@ from db import (
 )
 
 import configs.kafkaConfig as kafkaConfig
+import schemas
     
 
 async def createCurrency(
-        settings: kafkaConfig.Settings = kafkaConfig.getSettings()
+    payload: schemas.CurrencyIn,
+    settings: kafkaConfig.Settings = kafkaConfig.getSettings()
 ):
-
-    consumer = AIOKafkaConsumer(
-                settings.CURRENCY_CREATE_TOPIC,
-                loop=settings.loop(),
-                bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS,
-                group_id=settings.CURRENCY_CONSUMER_GROUP)
-    await consumer.start()
-    try:
-        async for msg in consumer:
-            payload = CurrencyIn.parse_raw(msg.value)
-            payload.id = uuid4()
-            payload.market_cap = payload.quantity * payload.price
-
-            query = Currency.insert()
-            await db.execute(query=query, values=payload.dict())
-
-    finally:
-        await consumer.stop()
+    payload.id = uuid4()
+    payload.market_cap = payload.quantity * payload.price
+    query = Currency.insert()
+    await db.execute(query=query, values=payload.dict())
 
 
 async def createMainCurrency(
