@@ -1,17 +1,6 @@
 from db import Country, database as db
 
-from aiokafka import AIOKafkaConsumer
-
-from configs.kafkaConfig import (
-    COUNTRY_DELETE_TOPIC,
-    KAFKA_BOOTSTRAP_SERVERS,
-    COUNTRY_CONSUMER_GROUP,
-    loop
-)
-
 import schemas
-
-import json
 
 
 async def createCountry(payload: schemas.CountryIn):
