@@ -2,6 +2,9 @@ from services.db.db import db
 from services.country.models import Country
 
 
+import schemas
+
+
 async def getCountry(countryId: int):
     query = Country.select().where(Country.c.id == countryId)
     return await db.fetch_one(query=query)
