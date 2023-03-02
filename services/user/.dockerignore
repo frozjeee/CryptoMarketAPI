@@ -1,7 +1,0 @@
-/__pycache__/*
-
-.dockerignore
-
-Dockerfile
-
-userService.yaml

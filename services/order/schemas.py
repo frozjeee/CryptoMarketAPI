@@ -1,33 +1,26 @@
-from uuid import UUID
-from pydantic import BaseModel, EmailStr
 from typing import Optional
+from decimal import Decimal
 from datetime import datetime
+
+from pydantic import BaseModel
 
 
 class OrderIn(BaseModel):
-    id: Optional[UUID]
-    user_id: UUID
-    currency_id: UUID
+    id: Optional[int]
+    user_id: int
+    currency_id: int
     type: str
-    price: float
-    quantity: float
+    price: Decimal
+    quantity: Decimal
     status: str
     main_currency: str
     ordered_at: Optional[datetime]
 
 
 class OrderOut(BaseModel):
-    id: UUID
+    id: int
 
 
 class UserVerify(BaseModel):
     verified: bool
     updated_at: Optional[datetime]
-
-
-class TokenData(BaseModel):
-    id: UUID
-    name: str
-    email: EmailStr
-    is_superuser: bool
-    exp: Optional[datetime]

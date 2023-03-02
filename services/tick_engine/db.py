@@ -1,11 +1,10 @@
 from datetime import datetime
-from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy import (TIMESTAMP, Column, Float, MetaData, 
-                        String, Table, create_engine)
+from sqlalchemy.dialects.postgresql import id
+from sqlalchemy import TIMESTAMP, Column, DECIMAL, MetaData, String, Table, create_engine
 from configs.config import getSettings
 import sqlalchemy.types as types
 import databases
-import uuid
+import id
 
 
 settings = getSettings()
@@ -17,13 +16,13 @@ metadata = MetaData()
 
 
 class OrderType(types.TypeDecorator):
-    orderTypes = ['buy', 'sell']
+    orderTypes = ["buy", "sell"]
     impl = types.String
     cache_ok = True
 
     def process_bind_param(self, value, dialect):
         if value not in self.orderTypes:
-            raise ValueError('Invalid order type')
+            raise ValueError("Invalid order type")
         return value
 
     def process_result_value(self, value, dialect):
@@ -31,13 +30,13 @@ class OrderType(types.TypeDecorator):
 
 
 class OrderStatus(types.TypeDecorator):
-    orderStatuses = ['pending', 'filled', 'cancelled']
+    orderStatuses = ["pending", "filled", "cancelled"]
     impl = types.String
     cache_ok = True
 
     def process_bind_param(self, value, dialect):
         if value not in self.orderStatuses:
-            raise ValueError('Invalid order status')
+            raise ValueError("Invalid order status")
         return value
 
     def process_result_value(self, value, dialect):
@@ -45,35 +44,35 @@ class OrderStatus(types.TypeDecorator):
 
 
 Currency = Table(
-    'currency',
+    "currency",
     metadata,
-    Column(UUID(), name='id', primary_key=True, nullable=False, unique=True),
-    Column('code', String(10), nullable=False),
-    Column('name', String(50), nullable=False),
-    Column('price', Float, nullable=False),
-    Column('quantity', Float, nullable=False),
-    Column('market_cap', Float, nullable=False),
+    Column(id(), name="id", primary_key=True, nullable=False, unique=True),
+    Column("code", String(10), nullable=False),
+    Column("name", String(50), nullable=False),
+    Column("price", DECIMAL, nullable=False),
+    Column("quantity", DECIMAL, nullable=False),
+    Column("market_cap", DECIMAL, nullable=False),
 )
 
 Order = Table(
-    'order',
+    "order",
     metadata,
-    Column(UUID(), name='id', primary_key=True, unique=True),
-    Column(UUID(), name='user_id'),
-    Column(UUID(), name='currency_id'),
-    Column('type', OrderType, nullable=False),
-    Column('price', Float, nullable=False),
-    Column('quantity', Float, nullable=False),
-    Column('status', OrderStatus, nullable=False),
-    Column('ordered_at', TIMESTAMP, nullable=False)
+    Column(id(), name="id", primary_key=True, unique=True),
+    Column(id(), name="user_id"),
+    Column(id(), name="currency_id"),
+    Column("type", OrderType, nullable=False),
+    Column("price", DECIMAL, nullable=False),
+    Column("quantity", DECIMAL, nullable=False),
+    Column("status", OrderStatus, nullable=False),
+    Column("ordered_at", TIMESTAMP, nullable=False),
 )
 
 Wallet = Table(
-    'wallet',
+    "wallet",
     metadata,
-    Column(UUID(), name='user_id'),
-    Column(UUID(), name='currency_id'),
-    Column('amount', Float, nullable=False),
-    Column('quantity', Float, nullable=False),
-    Column('created_at', TIMESTAMP, nullable=False)
+    Column(id(), name="user_id"),
+    Column(id(), name="currency_id"),
+    Column("amount", DECIMAL, nullable=False),
+    Column("quantity", DECIMAL, nullable=False),
+    Column("created_at", TIMESTAMP, nullable=False),
 )

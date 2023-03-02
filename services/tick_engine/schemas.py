@@ -1,17 +1,16 @@
-from uuid import UUID
-from pydantic import BaseModel, EmailStr
-from typing import List, Optional
 from datetime import datetime
-from pyllist import sllist
+from decimal import Decimal
+
+from pydantic import BaseModel
 
 
 class Order(BaseModel):
-    id: UUID
+    id: id
     user_id: str
     currency_id: str
     type: str
-    price: float
-    quantity: float
+    price: Decimal
+    quantity: Decimal
     status: str
     ordered_at: datetime
 
@@ -20,4 +19,3 @@ class MatchedOrders(BaseModel):
     buyOrder: Order
     sellOrder: Order
     type: str
-

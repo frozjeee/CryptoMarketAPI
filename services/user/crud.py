@@ -1,82 +1,74 @@
-from datetime import datetime
-from aiokafka import AIOKafkaConsumer
-from fastapi.security import OAuth2PasswordBearer
-from schemas import UserId, UserIn, UserOut, UserUpdate
-from db import User, database as db
-from passlib.context import CryptContext
-import configs.kafkaConfig as kafkaConfig
+import idanalyzer
+
+from pydantic import EmailStr
+
+from config.config import settings
+from services.user.models import User
+from services.user.schemas import UserIn, UserVerify
+from services.db.db import db
 
 
-oauth2Scheme = OAuth2PasswordBearer(tokenUrl="login")
-pwdContext = CryptContext(schemes=["bcrypt"], deprecated="auto")
+async def getUserByEmail(email: EmailStr):
+    query = User.select().where(User.c.email == email)
+    result = await db.fetch_one(query=query)
+    return dict(result) if result else None
 
 
-async def getUserByEmail(email):
+async def getUserById(UserId: int):
     query = User.select()
-    return await db.fetch_one(query=query, values=email)
+    return await db.fetch_one(query=query, values=UserId)
 
 
-async def createUser(settings: kafkaConfig.Settings = kafkaConfig.getSettings()):
-    consumer = AIOKafkaConsumer(settings.REGISTER_TOPIC,
-                                loop=settings.loop(),
-                                bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS,
-                                group_id=settings.USER_CONSUMER_GROUP)
-    await consumer.start()
+async def deleteUser(userId: int):
+    query = User.delete().where(User.c.id == userId)
+    await db.execute(query=query)
+
+
+async def createUser(userIn: UserIn):
+    query = User.insert().values(dict(userIn))
+    await db.execute(query=query)
+
+
+async def updateUser(UserUpdate: UserIn, userId: int):
+    query = (
+        User.update()
+        .where(User.c.id == userId)
+        .values(UserUpdate.dict(exclude_none=True))
+    )
+    await db.execute(query=query)
+
+
+async def verifyUser(userVerify: UserVerify):
     try:
-        async for msg in consumer:
-            payload = UserIn.parse_raw(msg.value)
-            payload.password = pwdContext.hash(payload.password)
-            payload.updated_at = datetime.today().replace(microsecond=0)
-            payload.created_at = datetime.today().replace(microsecond=0)
-            query = User.insert().values(dict(payload))
-            await db.execute(query=query)
-    finally:
-        await consumer.stop()
+        coreapi = idanalyzer.CoreAPI(
+            settings.ID_ANALYZER_API_KEY, settings.ID_ANALYZER_REGION
+        )
 
+        coreapi.throw_api_exception(True)
+        coreapi.enable_authentication(True, "quick")
+        coreapi.verify_expiry(True)
+        coreapi.verify_age("18-120")
+        coreapi.enable_dualside_check(True)
 
-async def deleteUser(settings: kafkaConfig.Settings = kafkaConfig.getSettings()):
-    consumer = AIOKafkaConsumer(settings.USER_DELETE_TOPIC,
-                                loop=settings.loop(),
-                                bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS,
-                                group_id=settings.USER_CONSUMER_GROUP)
-    await consumer.start()
-    try:
-        async for msg in consumer:
-            payload = UserOut.parse_raw(msg.value)
-            query = User.delete().where(User.c.id==payload.id)
-            await db.execute(query=query)
-    finally:
-        await consumer.stop()
+        response = coreapi.scan(
+            document_primary=userVerify.frontPage,
+            document_secondary=userVerify.backPage,
+            biometric_photo=userVerify.userFace,
+        )
 
+        if response["authentication"]["score"] < 0.5:
+            return False
 
-async def updateUser(settings: kafkaConfig.Settings = kafkaConfig.getSettings()):
-    consumer = AIOKafkaConsumer(settings.USER_UPDATE_TOPIC,
-                                loop=settings.loop(),
-                                bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS,
-                                group_id=settings.USER_CONSUMER_GROUP)
-    await consumer.start()
-    try:
-        async for msg in consumer:
-            payload = UserUpdate.parse_raw(msg.value)
-            payload.updated_at = datetime.today().replace(microsecond=0)
-            query = User.update().where(User.c.id==payload.id) \
-                                .values(payload.dict(exclude_none=True))
-            await db.execute(query=query)
-    finally:
-        await consumer.stop()
+        if not response["face"]["isIdentical"]:
+            return False
 
-
-async def verifiedUser(settings: kafkaConfig.Settings = kafkaConfig.getSettings()):
-    consumer = AIOKafkaConsumer(settings.USER_VERIFIED_TOPIC,
-                                loop=settings.loop(),
-                                bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS,
-                                group_id=settings.USER_CONSUMER_GROUP)
-    await consumer.start()
-    try:
-        async for msg in consumer:
-            payload = UserId.parse_raw(msg.value)
-            query = User.update().where(User.c.id==payload.id) \
-                                .values(verified=True)
-            await db.execute(query=query)
-    finally:
-        await consumer.stop()
+    except idanalyzer.APIError as e:
+        details = e.args[0]
+        print(
+            "API error code: {}, message: {}".format(
+                details["code"], details["message"]
+            )
+        )
+    except Exception as e:
+        print(e)
+    return True

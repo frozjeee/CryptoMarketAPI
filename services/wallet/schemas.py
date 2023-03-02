@@ -1,29 +1,17 @@
-from uuid import UUID
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from typing import Optional
 from datetime import datetime
+from decimal import Decimal
 
 
 class WalletIn(BaseModel):
-    id: Optional[UUID]
-    quantity: Optional[float] = 0
-    created_at: Optional[datetime]
-    
+    userId: int = Field()
+    currencyId: int = Field()
+    quantity: Optional[Decimal] = Field()
+    created_at: Optional[datetime] = Field()
+
 
 class WalletUpdate(BaseModel):
-    id: UUID
-    user_id: UUID
-    currency_id: UUID
-    quantity: Optional[float]
-
-
-class WalletOut(BaseModel):
-    id: UUID
-
-
-class TokenData(BaseModel):
-    id: UUID
-    name: str
-    email: EmailStr
-    is_superuser: bool
-    exp: Optional[datetime]
+    user_id: int = Field()
+    currency_id: int = Field()
+    quantity: Optional[Decimal] = Field()

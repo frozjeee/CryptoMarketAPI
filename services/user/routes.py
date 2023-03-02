@@ -1,92 +1,60 @@
-from typing import Optional
-from fastapi import APIRouter, Depends, Header, status
+from fastapi import APIRouter, Depends, status, Path, HTTPException
 from aiokafka import AIOKafkaProducer
-from schemas import (UserShow, UserUpdate, 
-                    UserOut, UserVerify)
-import configs.kafkaConfig as kafkaConfig
-import configs.config as config
-import authorization
+
+from services.user import crud, schemas, models
+from services.auth.deps import getCurrentUser
+import config.config as settings
 
 
 router = APIRouter()
 
 
-# @router.get("/{email}/", response_model=UserShow)
-# async def getUser(email: str):
-#     return await getUser(email)
-    
+@router.get("/{userId}/", response_model=schemas.UserOut, status_code=200)
+async def getUser(userId: int = Path(...)):
+    return await getUser(userId)
 
-@router.patch("/")
+
+@router.patch("/{userId}/", response_model=schemas.UserOut, status_code=200)
 async def updateUser(
-        payload: UserUpdate,
-        Authorization: Optional[str] = Header(None),
-        settings: config.Settings = Depends(config.getSettings),
-        kafkaSettings: kafkaConfig.Settings = Depends(kafkaConfig.getSettings)):
-    tokenData = authorization.validateToken(Authorization)
-    if not payload.id == tokenData.id and not tokenData.is_superuser:
-        raise settings.BaseHTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Not enough rights",)
-    producer = AIOKafkaProducer(
-        loop=kafkaSettings.loop(), bootstrap_servers=kafkaSettings.KAFKA_BOOTSTRAP_SERVERS)
-    await producer.start()
-    try:
-        userJson = payload.json().encode("utf-8")
-        await producer.send_and_wait(topic=kafkaSettings.USER_UPDATE_TOPIC, value=userJson)
-        return {"status_code": status.HTTP_200_OK,
-                "message": "User updated successfully"}
-    finally:
-        await producer.stop()
+    payload: schemas.UserIn,
+    userUpdate: schemas.UserIn,
+    user: models.User = Depends(getCurrentUser),
+):
+    updatedUser = await crud.updateUser(userUpdate)
+
+    return updatedUser
 
 
-@router.delete("/")
+@router.delete("/{userId}/", status_code=status.HTTP_204_NO_CONTENT)
 async def deleteUser(
-        payload: UserOut,
-        Authorization: Optional[str] = Header(None),
-        settings: config.Settings = Depends(config.getSettings),
-        kafkaSettings: kafkaConfig.Settings = Depends(kafkaConfig.getSettings)):
-    tokenData = authorization.validateToken(Authorization)
-    if not payload.id == tokenData.id and not tokenData.is_superuser:
-        raise settings.BaseHTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Not enought rights")
-    producer = AIOKafkaProducer(
-    loop=kafkaSettings.loop(), bootstrap_servers=kafkaSettings.KAFKA_BOOTSTRAP_SERVERS)
-    await producer.start()
-    try:
-        userIdJson = payload.json().encode("utf-8")
-        await producer.send_and_wait(topic=kafkaSettings.USER_DELETE_TOPIC, value=userIdJson)
-        return {"status_code": status.HTTP_200_OK,
-                "message": "User deleted successfully"}
-    finally:
-        await producer.stop()
+    userId: int = Path(...), user: models.User = Depends(getCurrentUser)
+):
+    if not user.id == userId or not user.is_superuser:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Not enought rights"
+        )
+
+    await crud.deleteUser(userId=userId)
 
 
-@router.post("/verify")
-async def verifyUser(
-        payload: UserVerify = Depends(UserVerify.asForm),
-        Authorization: Optional[str] = Header(None),
-        settings: config.Settings = Depends(config.getSettings),
-        kafkaSettings: kafkaConfig.Settings = Depends(kafkaConfig.getSettings)):
-    tokenData = authorization.validateToken(Authorization)
-    if not tokenData.id:
-        raise settings.BaseHTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Could not validate credentials",
-                headers={"WWW-Authenticate": "Bearer"})
-    producer = AIOKafkaProducer(
-                loop=kafkaSettings.loop(), 
-                bootstrap_servers=kafkaSettings.KAFKA_BOOTSTRAP_SERVERS,
-                max_request_size=10000000,
-                compression_type="gzip")
-    await producer.start()
-    try:
-        await payload.toBase64()
-        imagesJson = payload.json().encode("utf-8")
-        await producer.send_and_wait(
-                topic=kafkaSettings.USER_VERIFY_TOPIC, 
-                value=imagesJson)
-        return {"status_code": status.HTTP_200_OK,
-                "message": "User verification sent"}
-    finally:
-        await producer.stop()
+# @router.post("/{id}/verify")
+# async def verifyUser(
+#     payload: schemas.UserVerify = Depends(schemas.UserVerify.asForm),
+#     user: models.User = Depends(getCurrentUser),
+# ):
+#     producer = AIOKafkaProducer(
+#                 loop=settings.loop(),
+#                 bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS,
+#                 max_request_size=10000000,
+#                 compression_type="gzip")
+#     await producer.start()
+#     try:
+#         await payload.toBase64()
+#         imagesJson = payload.json().encode("utf-8")
+#         await producer.send_and_wait(
+#                 topic=settings.USER_VERIFY_TOPIC,
+#                 value=imagesJson)
+#         return {"status_code": status.HTTP_200_OK,
+#                 "message": "User verification sent"}
+#     finally:
+#         await producer.stop()

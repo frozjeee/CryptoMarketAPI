@@ -1,35 +1,24 @@
-from uuid import UUID
-from pydantic import BaseModel
-from datetime import datetime
+from pydantic import BaseModel, Field
 from pyllist import sllist
 
-
-class OrderIn(BaseModel):
-    id: UUID
-    user_id: str
-    currency_id: str
-    type: str
-    price: float
-    quantity: float
-    status: str
-    ordered_at: datetime
+from services.order.schemas import OrderIn
 
 
 class MatchedOrders(BaseModel):
-    buyOrder: OrderIn
-    sellOrder: OrderIn
-    type: str
-    restart: bool
+    buyOrder: OrderIn = Field()
+    sellOrder: OrderIn = Field()
+    type: str = Field()
+    restart: bool = Field()
 
 
 class OrderLL(BaseModel):
-    buy: sllist
-    sell: sllist
+    buy: sllist = Field()
+    sell: sllist = Field()
 
     class Config:
         arbitrary_types_allowed = True
 
 
 class MatchedOrdersAndAllOrders(BaseModel):
-    matchedOrders: MatchedOrders
-    currenciesOrders: list
+    matchedOrders: MatchedOrders = Field()
+    currenciesOrders: list = Field()

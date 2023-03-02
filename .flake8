@@ -1,5 +1,0 @@
-[flake8]
-exclude = services/*/migrations/
-
-inline-quotes = "
-max-line-length = 120

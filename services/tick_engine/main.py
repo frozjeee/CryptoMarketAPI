@@ -1,7 +1,5 @@
 from fastapi import FastAPI
-from db import (currency_database,
-                order_database,
-                wallet_database)
+from db import currency_database, order_database, wallet_database
 import asyncio
 import uvicorn
 import engine
@@ -12,7 +10,7 @@ app = FastAPI()
 
 @app.on_event("startup")
 async def startup():
-    asyncio.create_task(engine.transactionOrders()) 
+    asyncio.create_task(engine.transactionOrders())
     await wallet_database.connect()
     await order_database.connect()
     await currency_database.connect()
