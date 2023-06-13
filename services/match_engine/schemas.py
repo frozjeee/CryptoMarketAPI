@@ -1,14 +1,13 @@
 from pydantic import BaseModel, Field
 from pyllist import sllist
 
-from services.order.schemas import OrderIn
+from services.order.schemas import OrderOut
 
 
 class MatchedOrders(BaseModel):
-    buyOrder: OrderIn = Field()
-    sellOrder: OrderIn = Field()
+    buyOrder: OrderOut = Field()
+    sellOrder: OrderOut = Field()
     type: str = Field()
-    restart: bool = Field()
 
 
 class OrderLL(BaseModel):

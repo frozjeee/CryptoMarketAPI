@@ -1,19 +1,21 @@
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from decimal import Decimal
 
 
 class CurrencyIn(BaseModel):
     name: str
     code: str
-    market_cap: Optional[Decimal]
     quantity: Decimal
     price: Decimal
 
 
-class CurrencyOut(BaseModel):
+class CurrencyOut(CurrencyIn):
     id: int
+
+    class Config:
+        orm_mode = True
 
 
 class CurrencyUpdate(BaseModel):

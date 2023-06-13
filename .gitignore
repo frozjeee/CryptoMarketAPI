@@ -5,3 +5,5 @@ __pycache__/
 # Modules
 venv/*
 bitnami/
+
+enter_venv.bat

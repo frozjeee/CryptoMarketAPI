@@ -1,60 +1,52 @@
-from fastapi import APIRouter, Depends, status, Path, HTTPException
-from aiokafka import AIOKafkaProducer
+from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter, Depends, status, Path, Response, HTTPException
 
+from services.db.deps import get_db_session
 from services.user import crud, schemas, models
 from services.auth.deps import getCurrentUser
-import config.config as settings
+from services.auth.crud import createAccessToken
+from services.wallet.crud import createWallet
 
 
 router = APIRouter()
 
 
-@router.get("/{userId}/", response_model=schemas.UserOut, status_code=200)
-async def getUser(userId: int = Path(...)):
-    return await getUser(userId)
+@router.get("/{pk}/", response_model=schemas.UserOutSchema, status_code=200)
+async def getUser(
+    db: AsyncSession = Depends(get_db_session),
+    pk: int = Path(...)):
+    return await crud.getUserById(db, pk)
 
 
-@router.patch("/{userId}/", response_model=schemas.UserOut, status_code=200)
+@router.patch("/")
 async def updateUser(
-    payload: schemas.UserIn,
-    userUpdate: schemas.UserIn,
+    userUpdate: schemas.UserInSchema,
     user: models.User = Depends(getCurrentUser),
 ):
-    updatedUser = await crud.updateUser(userUpdate)
+    await crud.updateUser(userUpdate)
 
-    return updatedUser
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@router.delete("/{userId}/", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/")
 async def deleteUser(
-    userId: int = Path(...), user: models.User = Depends(getCurrentUser)
+    user: models.User = Depends(getCurrentUser)
 ):
-    if not user.id == userId or not user.is_superuser:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Not enought rights"
-        )
+    await crud.deleteUser(userId=user.id)
 
-    await crud.deleteUser(userId=userId)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-# @router.post("/{id}/verify")
-# async def verifyUser(
-#     payload: schemas.UserVerify = Depends(schemas.UserVerify.asForm),
-#     user: models.User = Depends(getCurrentUser),
-# ):
-#     producer = AIOKafkaProducer(
-#                 loop=settings.loop(),
-#                 bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS,
-#                 max_request_size=10000000,
-#                 compression_type="gzip")
-#     await producer.start()
-#     try:
-#         await payload.toBase64()
-#         imagesJson = payload.json().encode("utf-8")
-#         await producer.send_and_wait(
-#                 topic=settings.USER_VERIFY_TOPIC,
-#                 value=imagesJson)
-#         return {"status_code": status.HTTP_200_OK,
-#                 "message": "User verification sent"}
-#     finally:
-#         await producer.stop()
+@router.post("/verify/")
+async def verifyUser(
+    db: AsyncSession = Depends(get_db_session),
+    payload: schemas.UserVerify = Depends(schemas.UserVerify.asForm),
+    user: models.User = Depends(getCurrentUser),
+):
+    verified = await crud.verifyUser(payload)
+    if verified:
+        accessToken = createAccessToken(user)
+        await crud.updateUser(db=db, user=schemas.UserUpdateSchema(id=user.id, verified=True))
+        await createWallet(db, userId=user.id)
+        return {"accessToken": accessToken}
+    return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User was not verified")

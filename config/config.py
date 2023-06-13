@@ -21,18 +21,9 @@ class Settings(BaseSettings):
 
     loop = asyncio.get_event_loop
 
-    # Apache Kafka  
-    KAFKA_BOOTSTRAP_SERVERS: str
-    ORDER_MATCH_TOPIC: str
-    ORDER_FULFILL_TOPIC: str
-    ORDER_CONSUMER_GROUP: str
-    ORDER_MATCH_TOPIC: str
-    ORDER_VALIDATE_TOPIC: str
-    TRANSACT_ORDER_MONEY: str
-    REGISTER_TOPIC: str
-    USER_VERIFY_TOPIC: str
-    USER_VERIFIED_TOPIC: str
-    TRANSACTIONAL_ID: str
+    RABBITMQ_URL: str
+    RABBITMQ_QUEUE_NAME: str
+    RABBITMQ_RECONNECT_INTERVAL: int
 
     class Config:
         env_file = ".env"

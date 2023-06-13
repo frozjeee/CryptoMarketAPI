@@ -4,45 +4,33 @@ from sqlalchemy import (
     ForeignKey,
     Integer,
     String,
-    Table,
     DECIMAL,
 )
 
-from services.db.db import metadata
+from services.db.db import Model
 from services.common import timezone
 
 
-Currency = Table(
-    "currency",
-    metadata,
-    Column("id", Integer, primary_key=True, unique=True),
-    Column("code", String(10)),
-    Column("name", String(50)),
-    Column("price", DECIMAL),
-    Column("quantity", DECIMAL),
-    Column("market_cap", DECIMAL),
-    Column("created_at", DateTime, default=timezone.now),
-    Column("updated_at", DateTime, default=timezone.now, onupdate=timezone.now),
-)
+class Currency(Model):
+    __tablename__ = "currency"
+
+    id = Column(Integer, primary_key=True, unique=True)
+    code = Column(String(10))
+    name = Column(String(50))
+    price = Column(DECIMAL)
+    quantity = Column(DECIMAL)
+    created_at = Column(DateTime, default=timezone.now)
+    updated_at = Column(DateTime, default=timezone.now, onupdate=timezone.now)
+
+    @property
+    def market_cap(self):
+        return self.price * self.quantity
 
 
-Money = Table(
-    "money",
-    metadata,
-    Column("id", Integer, primary_key=True, unique=True),
-    Column("code", String(10)),
-    Column("name", String(50)),
-    Column("quantity", DECIMAL),
-    Column("created_at", DateTime, default=timezone.now),
-    Column("updated_at", DateTime, default=timezone.now, onupdate=timezone.now),
-)
+class CurrencyHistory(Model):
+    __tablename__ = "currency_history"
 
-
-CurrencyHistory = Table(
-    "currency_history",
-    metadata,
-    Column("id", Integer, primary_key=True, unique=True, autoincrement=True),
-    Column("currency_id", Integer, ForeignKey("currency.id")),
-    Column("price", DECIMAL),
-    Column("created_at", DateTime, default=timezone.now),
-)
+    id = Column(Integer, primary_key=True, unique=True, autoincrement=True)
+    currency_id = Column(Integer, ForeignKey("currency.id"))
+    price = Column(DECIMAL)
+    created_at = Column(DateTime, default=timezone.now)

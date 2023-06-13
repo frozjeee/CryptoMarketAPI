@@ -5,7 +5,7 @@ from sqlalchemy import pool
 
 from alembic import context
 
-from services.db.db import metadata
+from services.db.base import Model
 from config.config import settings
 
 # this is the Alembic Config object, which provides
@@ -20,7 +20,7 @@ if config.config_file_name is not None:
 # add your model's MetaData object here
 # for 'autogenerate' support
 # from myapp import mymodel
-target_metadata = metadata
+target_metadata = Model.metadata
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
@@ -63,6 +63,7 @@ def run_migrations_online():
         config.get_section(config.config_ini_section),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
+        url="postgresql://admin:admin@localhost:5432/market"
     )
 
     with connectable.connect() as connection:

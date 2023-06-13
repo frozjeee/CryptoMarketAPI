@@ -1,28 +1,42 @@
 import base64
-from fastapi import Form, UploadFile
+from decimal import Decimal
+
+from fastapi import UploadFile, File
 from pydantic import BaseModel, EmailStr
 from typing import Optional
-from datetime import date, datetime
+from datetime import date
+
+from services.country.schemas import CountrySchema
 
 
-class UserIn(BaseModel):
+class UserInSchema(BaseModel):
     name: str
     password: str
-    is_superuser: Optional[bool]
-    verified: Optional[bool]
     email: EmailStr
     birthdate: date
     country_id: int
-    created_at: Optional[datetime]
-    updated_at: Optional[datetime]
 
 
-class UserOut(UserIn):
+class UserOutSchema(UserInSchema):
     id: int
+    is_superuser: bool
+    email: EmailStr
+    balance: Decimal
+    verified: bool
+    birthdate: date
+    country: CountrySchema
+
+    class Config:
+        orm_mode = True
+
+
+class UserUpdateSchema(BaseModel):
+    id: int
+    verified: Optional[bool]
+    name: Optional[str]
 
 
 class UserVerify(BaseModel):
-    id: Optional[int]
     frontPage: UploadFile
     backPage: UploadFile
     userFace: UploadFile
@@ -30,17 +44,16 @@ class UserVerify(BaseModel):
     @classmethod
     def asForm(
         cls,
-        id: id = Form(...),
-        frontPage: UploadFile = Form(...),
-        backPage: UploadFile = Form(...),
-        userFace: UploadFile = Form(...),
+        frontPage: UploadFile = File(...),
+        backPage: UploadFile = File(...),
+        userFace: UploadFile = File(...),
     ):
-        return cls(id=id, frontPage=frontPage, backPage=backPage, userFace=userFace)
+        return cls(frontPage=frontPage, backPage=backPage, userFace=userFace)
 
     async def toBase64(self):
         frontPage = await self.frontPage.read()
         backPage = await self.backPage.read()
         userFace = await self.userFace.read()
-        self.frontPage = base64.b64encode(frontPage)
-        self.backPage = base64.b64encode(backPage)
-        self.userFace = base64.b64encode(userFace)
+        self.frontPage = base64.b64encode(frontPage).decode("utf-8")
+        self.backPage = base64.b64encode(backPage).decode("utf-8")
+        self.userFace = base64.b64encode(userFace).decode("utf-8")

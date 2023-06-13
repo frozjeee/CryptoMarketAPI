@@ -1,14 +1,18 @@
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import datetime
 from decimal import Decimal
 
+from services.currency.schemas import CurrencyOut
 
-class WalletIn(BaseModel):
-    userId: int = Field()
-    currencyId: int = Field()
+
+class WalletOut(BaseModel):
+    currency: CurrencyOut
     quantity: Optional[Decimal] = Field()
     created_at: Optional[datetime] = Field()
+
+    class Config:
+        orm_mode = True
 
 
 class WalletUpdate(BaseModel):

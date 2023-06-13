@@ -1,21 +1,15 @@
-import jwt
-
 from typing import Optional
 
 from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPBearer as BaseHTTPBearer
-from fastapi.security import OAuth2PasswordBearer
 from pydantic import ValidationError
 from starlette import status
-from passlib.context import CryptContext
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from services.auth.crud import verifyAccessToken
 from services.auth.schemas import TokenData
+from services.db.deps import get_db_session
 from services.user.crud import getUserById
-
-
-pwdContext = CryptContext(schemes=["bcrypt"], deprecated="auto")
-oauth2Scheme = OAuth2PasswordBearer(tokenUrl="login")
 
 
 class HTTPBearer(BaseHTTPBearer):
@@ -27,21 +21,25 @@ class HTTPBearer(BaseHTTPBearer):
 reusable_oauth2 = HTTPBearer()
 
 
-async def getCurrentUser(token: str = Depends(reusable_oauth2)):
+async def getCurrentUser(
+        db: AsyncSession = Depends(get_db_session),
+        token: str = Depends(reusable_oauth2)):
     try:
         payload = verifyAccessToken(token)
         schema = TokenData(**payload)
-    except (jwt.InvalidTokenError, ValidationError):
+    except (ValidationError):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Not valid token",
         )
 
-    user = await getUserById(userId=schema.id)
+    user = await getUserById(db=db, id=schema.id)
     return user
 
 
-async def getAdminUser(token: str = Depends(reusable_oauth2)):
+async def getAdminUser(
+        db: AsyncSession = Depends(get_db_session),
+        token: str = Depends(reusable_oauth2)):
     try:
         payload = verifyAccessToken(token)
         schema = TokenData(**payload)
@@ -50,10 +48,10 @@ async def getAdminUser(token: str = Depends(reusable_oauth2)):
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Not enough rights",
             )
-    except (jwt.InvalidTokenError, ValidationError):
+    except (ValidationError):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Not valid token",
         )
-    user = await getUserById(userId=schema.id)
+    user = await getUserById(db=db, id=schema.id)
     return user

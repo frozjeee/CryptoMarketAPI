@@ -1,15 +1,16 @@
-from services.db.db import db
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from services.country.models import Country
 
 
-import schemas
+async def getCountry(db: AsyncSession, id: int):
+    q = select(Country).filter(Country.id == id)
+    cur = await db.execute(q)
+    return cur.scalar_one_or_none()
 
 
-async def getCountry(countryId: int):
-    query = Country.select().where(Country.c.id == countryId)
-    return await db.fetch_one(query=query)
-
-
-async def getAllCountries():
-    query = Country.select()
-    return await db.fetch_all(query=query)
+async def getAllCountries(db: AsyncSession):
+    q = select(Country)
+    cur = await db.execute(q)
+    return cur.scalars().all()

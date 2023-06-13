@@ -4,4 +4,4 @@ import pytz
 
 
 def now():
-    return datetime.now(tz=pytz.timezone(False)).replace(tzinfo=None)
+    return datetime.now(tz=pytz.timezone("Asia/Almaty")).replace(tzinfo=None)

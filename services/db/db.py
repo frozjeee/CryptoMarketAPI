@@ -1,14 +1,21 @@
-import databases
-from sqlalchemy import MetaData
+from asyncio import current_task
+
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_scoped_session
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.declarative import declarative_base
 
 from config.config import settings
 
 
-db = databases.Database(settings.DATABASE_URL)
-metadata = MetaData()
+Model = declarative_base()
 
-from services.currency.models import *
-from services.user.models import *
-from services.country.models import *
-from services.wallet.models import *
-from services.order.models import *
+engine = create_async_engine(
+    settings.DATABASE_URL,
+    pool_pre_ping=True,
+    echo=False,
+)
+
+Session = async_scoped_session(
+    sessionmaker(autocommit=False, autoflush=False, bind=engine,  expire_on_commit=False, class_=AsyncSession),
+    scopefunc=current_task
+)

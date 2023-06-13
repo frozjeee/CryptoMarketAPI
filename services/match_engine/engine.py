@@ -1,121 +1,144 @@
-import json
+import logging
 
-from aiokafka import AIOKafkaConsumer, AIOKafkaProducer
-from schemas import OrderIn, OrderLL, MatchedOrders
-from pyllist import sllist, sllistnode
+from sqlalchemy import select, desc, asc, update, insert
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from services.db.db import db
+from services.broker.schemas import OrderMQSchema
 from services.order.models import Order
-from services.currency.models import Currency
-import config.config as settings
+from services.wallet.models import Wallet
+from services.order import OrderTypeEnum, OrderStatusEnum
+from services.currency.models import Currency, CurrencyHistory
 
 
-async def receiveOrder():
-    ordersQuery = Order.select().where(Order.c.status == "pending")
-    orders = await db.fetch_all(ordersQuery)
-
-    currenciesOrders = {}
-    currenciesQuery = Currency.select()
-    currencies = await db.fetch_all(currenciesQuery)
-    for currency in currencies:
-        currenciesOrders[currency.get("id")] = OrderLL(buy=sllist(), sell=sllist())
-    for order in orders:
-        addToOrders(order, currenciesOrders)
-
-    consumer = AIOKafkaConsumer(
-        settings.ORDER_MATCH_TOPIC,
-        loop=settings.loop(),
-        bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS,
-        group_id=settings.ORDER_CONSUMER_GROUP,
-    )
-
-    producer = AIOKafkaProducer(
-        loop=settings.loop(), bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS
-    )
-
-    await producer.start()
-    await consumer.start()
-    try:
-        async for msg in consumer:
-            order = OrderIn.parse_raw(msg.value)
-            addToOrders(order, currenciesOrders)
-            while True:
-                matchedOrders = matchOrders(currenciesOrders, order.currency_id)
-                if not matchedOrders:
-                    break
-                matchedOrders = json.dumps(matchedOrders).encode("utf-8")
-                producer.send_and_wait(
-                    topic=settings.ORDER_FULFILL_TOPIC, value=matchedOrders
-                )
-                if not matchedOrders.restart:
-                    break
-    finally:
-        await producer.stop()
-        await consumer.stop()
+logger = logging.getLogger("match_engine")
+handler = logging.StreamHandler()
+formatter = logging.Formatter("[%(levelname)s - %(asctime)s]: %(message)s")
+handler.setFormatter(formatter)
+logger.addHandler(handler)
+logger.setLevel(logging.DEBUG)
 
 
-def matchOrders(currenciesOrders, currencyId):
-    orderMatches = None
-    buyOrder: sllistnode = currenciesOrders[currencyId].buy.first
-    sellOrders: sllist = currenciesOrders[currencyId].sell
-    buyOrders: sllist = currenciesOrders[currencyId].buy
-    for orderIndex, sellOrder in enumerate(sellOrders.iternodes()):
-        if sellOrder.value.price <= buyOrder.value.price:
-            if buyOrder.value.quantity < sellOrder.value.quantity:
-                orderMatches = MatchedOrders(
-                    buyOrder.value, sellOrder.value, "buy", False
-                )
-                sellOrders.nodeat(orderIndex).value.quantity = (
-                    buyOrder.value.quantity - sellOrder.value.quantity
-                )
-                buyOrders.popleft()
+async def receiveOrder(db: AsyncSession, order: OrderMQSchema):
+    order_q = select(Order).filter(Order.id == order.id)
+    cur = await db.execute(order_q)
+    db_order_raw = cur.scalar_one_or_none()
+    db_order = OrderMQSchema.from_orm(db_order_raw)
+
+    orders_q = select(Order).filter(
+            Order.currency_id == db_order.currency_id,
+            Order.status == OrderStatusEnum.pending.value)
+    if order.type == OrderTypeEnum.buy.value:
+        orders_q = orders_q.filter(Order.type == OrderTypeEnum.sell.value). \
+            order_by(asc(Order.price))
+    else:
+        orders_q = orders_q.filter(Order.type == OrderTypeEnum.buy.value). \
+            order_by(desc(Order.price))
+        
+    curr_q = select(Currency).filter(Currency.id == order.currency_id)
+    orders_cur = await db.execute(orders_q)
+    curr_cur = await db.execute(curr_q)
+
+    orders = orders_cur.scalars().all()
+    currency = curr_cur.scalar_one_or_none()
+
+    for ord in orders:
+        ord: Order
+        fin_price = ord.price - db_order.price
+        fin_quantity = ord.quantity - db_order.quantity
+        if fin_price >= 0:
+            if fin_quantity > 0:
+                print("fin_quantity > 0")
+                print(ord)
+                order_done_q = update(Order).filter(Order.id == db_order.id).values(status=OrderStatusEnum.done.value)
+                ord_order_q = update(Order).filter(Order.id == ord.id).values(quantity=fin_quantity)
+                await db.execute(order_done_q)
+                await db.execute(ord_order_q)
+                await transactionOrders(db, ord, db_order)
                 break
-            elif buyOrder.value.quantity > sellOrder.value.quantity:
-                orderMatches = MatchedOrders(
-                    buyOrder.value, sellOrder.value, "sell", True
-                )
-                buyOrders.nodeat(0).value.quantity = (
-                    buyOrder.value.quantity - sellOrder.value.quantity
-                )
-                sellOrders.remove(sellOrder)
+            elif fin_quantity == 0:
+                print("fin_quantity == 0")
+                print(ord)
+                order_done_q = update(Order).where(Order.id == db_order.id).values(status=OrderStatusEnum.done.value)
+                ord_done_q = update(Order).where(Order.id == ord.id).values(status=OrderStatusEnum.done.value)
+                await db.execute(order_done_q)
+                await db.execute(ord_done_q)
+
+                order_quant_q = update(Order).where(Order.id == db_order.id).values(quantity=0)
+                ord_quant_q = update(Order).where(Order.id == ord.id).values(quantity=0)
+
+                await db.execute(order_quant_q)
+                await db.execute(ord_quant_q)
+                await transactionOrders(db, ord, db_order)
                 break
             else:
-                orderMatches = MatchedOrders(
-                    buyOrder.value, sellOrder.value, "both", False
-                )
-                buyOrders.popleft()
-                sellOrders.remove(sellOrder)
-                break
-    if not orderMatches:
-        return None
-    return orderMatches
+                print("fin_quantity < 0")
+                print(ord)
+                order_q = update(Order).filter(Order.id == db_order.id).values(quantity=abs(fin_quantity))
+                ord_order_q = update(Order).filter(Order.id == ord.id).values(status=OrderStatusEnum.done.value)
+                await db.execute(order_done_q)
+                await db.execute(ord_order_q)
+                await transactionOrders(db, ord, db_order)
+                db_order.quantity = abs(fin_quantity)
+
+    return True
 
 
-def addToOrders(order, currenciesOrders):
-    inserted = False
-    if order.type == "buy":
-        buyOrders = currenciesOrders[order.get("currency_id")].buy
-        for buyOrder in buyOrders.iternodes():
-            if buyOrder.value.price < order.price:
-                buyOrders.insertbefore(buyOrder, order)
-                inserted = True
-                break
-            elif buyOrder.value.price == order.price:
-                buyOrders.insertafter(buyOrder, order)
-                inserted = True
-                break
-        if not inserted:
-            buyOrders.appendright(order)
+async def transactionOrders(db: AsyncSession, matched_order: Order, order: OrderMQSchema):
+    if order.type == OrderTypeEnum.buy.value:
+        userBuyWalletQuery = select(Wallet). \
+                            filter(Wallet.user_id == order.buyer_id). \
+                            filter(Wallet.currency_id == order.currency_id)
+        cur = await db.execute(userBuyWalletQuery)
+        userBuyWallet = cur.scalar_one_or_none()
+
+        userSellWalletQuery = select(Wallet). \
+                            filter(Wallet.user_id == matched_order.seller_id). \
+                            filter(Wallet.currency_id == matched_order.currency_id)
+        cur = await db.execute(userSellWalletQuery)
+        userSellWallet = cur.scalar_one_or_none()
+        
+        userBuyUpdateWalletQuery = update(Wallet). \
+            filter(Wallet.user_id == order.seller_id, Wallet.currency_id == matched_order.currency_id). \
+            values(quantity=userBuyWallet.quantity + matched_order.quantity)
+
+        userSellUpdateWalletQuery = update(Wallet). \
+            filter(Wallet.user_id == matched_order.seller_id, Wallet.currency_id == matched_order.currency_id). \
+            values(quantity=userSellWallet.quantity - matched_order.quantity)
+
+        await db.execute(userBuyUpdateWalletQuery)
+        await db.execute(userSellUpdateWalletQuery)
     else:
-        sellOrders = currenciesOrders[order.get("currency_id")].sell
-        for sellOrder in sellOrders.iternodes():
-            if sellOrder.value.price < order.price:
-                sellOrders.insertbefore(buyOrder, order)
-                inserted = True
-                break
-            elif sellOrder.value.price == order.price:
-                sellOrders.insertafter(buyOrder, order)
-                inserted = True
-                break
-        if not inserted:
-            sellOrders.appendright(order)
+        userBuyWalletQuery = select(Wallet). \
+                            filter(Wallet.user_id == matched_order.buyer_id). \
+                            filter(Wallet.currency_id == matched_order.currency_id)
+        cur = await db.execute(userBuyWalletQuery)
+        userBuyWallet = cur.scalar_one_or_none()
+
+        userSellWalletQuery = select(Wallet). \
+                            filter(Wallet.user_id == order.seller_id). \
+                            filter(Wallet.currency_id == order.currency_id)
+        cur = await db.execute(userSellWalletQuery)
+        userSellWallet = cur.scalar_one_or_none()
+        
+        userBuyUpdateWalletQuery = update(Wallet). \
+            filter(Wallet.user_id == matched_order.currency_id, Wallet.currency_id == matched_order.buyer_id). \
+            values(quantity=userBuyWallet.quantity + matched_order.quantity)
+
+        userSellUpdateWalletQuery = update(Wallet). \
+            filter(Wallet.user_id == order.currency_id, Wallet.currency_id == order.seller_id). \
+            values(quantity=userSellWallet.quantity - order.quantity)
+
+        await db.execute(userSellUpdateWalletQuery)
+        await db.execute(userBuyUpdateWalletQuery)
+
+    updateCurrPriceQuery = update(Currency). \
+            filter(Currency.id == order.currency_i). \
+            values(price=order.price)
+
+    updateCurrHistPriceQuery = insert(CurrencyHistory). \
+            values(currency_id=order.currency_id, quantity=userSellWallet.quantity - order.quantity)
+
+    await db.execute(updateCurrPriceQuery)
+    await db.execute(updateCurrHistPriceQuery)
+
+    await db.commit()

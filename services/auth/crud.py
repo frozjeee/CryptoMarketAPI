@@ -1,25 +1,25 @@
 import time
-from typing import Union, Dict, Any
 
 from fastapi import status, HTTPException
 from jose import JWTError, jwt
 from datetime import datetime, timedelta
 
+from services.user.models import User
 from services.auth.schemas import TokenData
 from config.config import settings
 
 
 def createAccessToken(
-    payload: dict
+    user: User
 ):
-    payload = TokenData(**payload)
+    payload = TokenData(**user.__dict__)
     expire = datetime.utcnow() + timedelta(
         minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
     )
-    payload["exp"] = expire
+    payload.__dict__.update({'exp': time.mktime(expire.timetuple())})
     try:
         encodedJwt = jwt.encode(
-            payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM
+            payload.dict(), settings.SECRET_KEY, algorithm=settings.ALGORITHM
         )
     except JWTError:
         raise HTTPException(
@@ -29,6 +29,6 @@ def createAccessToken(
     return encodedJwt
 
 
-def verifyAccessToken(token: str) -> Union[bool, Dict[str, Any]]:
-    payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+def verifyAccessToken(token: str):
+    payload = jwt.decode(token, key=settings.SECRET_KEY, algorithms=settings.ALGORITHM)
     return payload

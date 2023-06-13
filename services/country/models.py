@@ -1,12 +1,11 @@
-from sqlalchemy import Column, Integer, String, Table
+from sqlalchemy import Column, Integer, String
 
-from services.db.db import metadata
+from services.db.db import Model
 
 
-Country = Table(
-    "country",
-    metadata,
-    Column("id", Integer, primary_key=True, unique=True),
-    Column("code", String(10)),
-    Column("name", String(50), unique=True),
-)
+class Country(Model):
+    __tablename__ = "country"
+
+    id = Column(Integer, primary_key=True, unique=True)
+    code = Column(String(10))
+    name = Column(String(50), unique=True)

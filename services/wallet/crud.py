@@ -1,46 +1,76 @@
 from decimal import Decimal
 
+from sqlalchemy import select, update, insert
+from sqlalchemy.orm import joinedload
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from services.order.schemas import OrderIn
-from services.wallet.schemas import WalletIn
+from services.wallet.schemas import WalletUpdate
 from services.wallet.models import Wallet
 from services.currency.crud import getCurrencies
-from services.db.db import db
+from services.user.crud import getUserById
+from services.user.models import User
 
 
-async def getWallet(userId: int):
-    query = Wallet.select().where(Wallet.c.user_id == userId)
-    await db.fetch_all(query=query)
+async def getWallet(db: AsyncSession, userId: int):
+    q = select(Wallet).filter(Wallet.user_id == userId).options(joinedload(Wallet.currency))
+    cur = await db.execute(q)
+    return cur.scalars().all()
 
 
-async def getCurrencyWallet(userId: int, currencyId: int):
-    query = (
-        Wallet.select()
-        .where(Wallet.c.userId == userId)
-        .where(Wallet.c.currency_id == currencyId)
+
+async def getCurrencyWallet(db: AsyncSession, currencyId: int, userId: int):
+    q = select(Wallet). \
+        filter(Wallet.user_id == userId,
+               Wallet.currency_id == currencyId)
+    cur = await db.execute(q)
+    return cur.scalar_one_or_none()
+
+
+async def takeMoneyWallet(db: AsyncSession, currencyId: int, userId: int, quantity: Decimal):
+    wallet = await getCurrencyWallet(db=db, userId=userId, currencyId=currencyId)
+    walletChange = update(Wallet). \
+        filter(Wallet.user_id == userId, Wallet.currency_id == currencyId). \
+        values(quantity=wallet.quantity - quantity)
+    await db.execute(walletChange)
+    await db.commit()
+
+
+async def takeMoneyBalance(db: AsyncSession, currencyId: int, userId: int, quantity: Decimal):
+    user = await getUserById(db=db, id=userId)
+    userBalanceChange = update(User). \
+        filter(User.id == userId). \
+        values(balance=user.balance - quantity)
+    await db.execute(userBalanceChange)
+    await db.commit()
+
+
+async def topUpWallet(db: AsyncSession, walletTopUp: WalletUpdate):
+    q = update(Wallet).\
+        filter(Wallet.user_id == walletTopUp.user_id,
+               Wallet.currency_id == walletTopUp.currency_id). \
+        values(quantity=walletTopUp.quantity)
+    
+    await db.execute(q)
+    await db.commit()
+
+async def createWallet(db: AsyncSession, userId: int):
+    currencies = await getCurrencies(db)
+    await db.execute(
+        insert(Wallet),
+        [
+            dict(
+                user_id=userId,
+                currency_id=currency.id
+            )
+            for currency in currencies
+        ],
     )
-    return await db.fetch_one(query=query)
+
+    await db.commit()
 
 
-async def addMoneyWallet(userId: int, currencyId: int, sum: Decimal):
-    query = Wallet.insert().where()
-
-
-async def createWallet(wallet: WalletIn):
-    currencies = await getCurrencies()
-    walletQuery = Wallet.insert()
-    for currency in currencies:
-        await db.execute(
-            query=walletQuery,
-            values={
-                "user_id": wallet.id,
-                "currency_id": currency.id,
-                "quantity": wallet.quantity,
-                "created_at": wallet.created_at,
-            },
-        )
-
-
-async def transactOrderMoney(order: OrderIn):
+async def transactOrderMoney(db: AsyncSession, order: OrderIn):
     userMainBalanceQuery = (
         Wallet.select()
         .where(Wallet.c.user_id == order.user_id)
@@ -76,6 +106,7 @@ async def transactOrderMoney(order: OrderIn):
                 .values(amount=userBalance.quantity - order.quantity)
             )
 
-        db.execute(walletQuery)
+        await db.execute(walletQuery)
+        await db.commit()
     else:
         pass

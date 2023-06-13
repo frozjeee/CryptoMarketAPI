@@ -4,23 +4,25 @@ from datetime import datetime
 
 from pydantic import BaseModel
 
+from services.order import OrderTypeEnum
+
 
 class OrderIn(BaseModel):
-    id: Optional[int]
-    user_id: int
     currency_id: int
-    type: str
+    type: OrderTypeEnum
     price: Decimal
     quantity: Decimal
-    status: str
-    main_currency: str
-    ordered_at: Optional[datetime]
 
 
-class OrderOut(BaseModel):
+class OrderOut(OrderIn):
     id: int
+    status: str
+
+    class Config:
+        orm_mode = True
 
 
-class UserVerify(BaseModel):
+class UserVerified(BaseModel):
+    id: int
     verified: bool
     updated_at: Optional[datetime]

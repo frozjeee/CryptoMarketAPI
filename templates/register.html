@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Register</title>
+        <link href="https://fonts.googleapis.com/css?family=Playfair+Display:700,900" rel="stylesheet">
+        <!-- Latest compiled and minified CSS -->
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
+        <!-- jQuery library -->
+        <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.4/dist/jquery.slim.min.js"></script>
+        <!-- Popper JS -->
+        <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+        <!-- Latest compiled JavaScript -->
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
+        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+        <link rel="stylesheet" href="/static/dashboard.css">
+    </head>
+
+<body>
+  <div class="container">
+    <header class="blog-header py-3">
+        <div class="row flex-nowrap justify-content-between align-items-center">
+            <div class="col-4 pt-1">
+                <a class="text-muted" href="#"></a>
+            </div>
+            <div class="col-4 text-center">
+                <h3 class="blog-header-logo text-dark" href="#">Large</h3>
+            </div>
+            <div class="col-4 d-flex justify-content-end align-items-center">
+                <a class="text-muted" href="#">
+                    <!-- <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mx-3">
+                        <circle cx="10.5" cy="10.5" r="7.5"></circle>
+                        <line x1="21" y1="21" x2="15.8" y2="15.8"></line>
+                    </svg> -->
+                </a>
+                <a class="btn btn-sm btn-outline-secondary" href="http://localhost:8000/login">Sign in</a>
+                <img id="logout" src="/static/logout.png" onclick="logout()" title="logout icon" width="22px" height="22px" style="display: none;">
+            </div>
+        </div>
+    </header>
+    <div class="nav-scroller py-1 mb-2">
+        <nav class="nav d-flex justify-content-between">
+            <a class="p-2 text-muted" href="http://localhost:8000/dashboard">Dashboard</a>
+            <a class="p-2 text-muted" href="http://localhost:8000/orders">Orders</a>
+            <a class="p-2 text-muted" href="http://localhost:8000/currencies">Currencies</a>
+        </nav>
+    </div>
+<div class="container">
+<hr>
+
+<div class="row d-flex justify-content-center">
+	<aside class="col-sm-4">
+<div class="card">
+<article class="card-body">
+<h4 class="card-title mb-4 mt-1 text-center">Sign up</h4>
+	 <form id="signupForm">
+    <div class="form-group">
+    	<label>Your email</label>
+        <input name="email" class="form-control" placeholder="Email" type="email">
+    </div> <!-- form-group// -->
+        <div class="form-group">
+    	<label>Your name</label>
+        <input name="name" class="form-control" placeholder="Name" type="text">
+    </div> <!-- form-group// -->
+    <div class="form-group">
+      <label>Select Country</label>
+      <select name="country" id="countryDropdown" class="form-control" type="dropdown"></select>
+  </div> <!-- form-group// -->
+    <div class="form-group">
+          	<label>Your birthdate</label>
+                <div class='input-group date' id='datetimepicker1'>
+                    <input name="birthdate" type='date' class="form-control" />
+                    <span class="input-group-addon">
+                        <span class="glyphicon glyphicon-calendar"></span>
+                    </span>
+                </div>
+            </div>
+    <div class="form-group">
+    	<label>Your password</label>
+        <input name="password" class="form-control" placeholder="******" type="password">
+    </div> <!-- form-group// --> 
+    <div class="form-group">
+    	<label>Enter password again</label>
+        <input name="passwordConfirm"class="form-control" placeholder="******" type="password">
+    </div> <!-- form-group// --> 
+    <div id="passwordMatchError" class="form-group" style="display: none; color: red;">
+        Passwords do not match
+      </div>
+    <div class="form-group">
+        <button type="submit" class="btn btn-primary btn-block">Register</button>
+    </div> <!-- form-group// -->                                                           
+</form>
+</article>
+</div> <!-- card.// -->
+  </aside>
+  </div>
+</div>
+<script>
+  $(document).ready(function() {
+      // Fetch countries from the server
+      $.get("http://localhost:8000/country/", function(countries) {
+          var dropdown = $("#countryDropdown"); // Dropdown element
+          // Populate dropdown options
+          countries.forEach(function(country) {
+              dropdown.append($("<option>").val(country.id).text(country.name));
+          });
+      });
+  });
+</script>
+<script>
+    $(document).ready(function() {
+      var country_id; // Declare the variable outside the function
+      $('#signupForm').submit(function(event) {
+        event.preventDefault(); // Prevent the form from submitting normally
+        var dropdown = $("#countryDropdown"); // Dropdown element
+        var password = $('form input[name="password"]').val();
+        var passwordConfirm = $('form input[name="passwordConfirm"]').val();
+
+        if (password !== passwordConfirm) {
+          // Display the error message if passwords do not match
+          $('#passwordMatchError').show();
+          return;
+        }
+        // Get the form data
+        var formData = {
+          email: $('input[name="email"]').val(),
+          name: $('input[name="name"]').val(),
+          birthdate: $('input[name="birthdate"]').val(),
+          password: $('input[name="password"]').val(),
+          country_id: $('#countryDropdown option:selected').val() // Get the data attribute value of the selected option
+        };
+        // Send the form data to the backend
+        $.ajax({
+          url: 'http://localhost:8000/auth/register',    // Specify the URL of your backend API
+          method: 'POST',         // Specify the HTTP method as POST
+          contentType: 'application/json',  // Specify the content type as JSON
+          data: JSON.stringify(formData),   // Convert the form data object to JSON string
+          success: function(response) {
+            // Handle the successful response from the backend
+            window.location.href = "http://localhost:8000/dashboard"
+          },
+          error: function(xhr, status, error) {
+            // Handle the error response from the backend
+            console.log(error);
+          }
+        });
+      });
+    });
+  </script>
+
+  <script src="//cdnjs.cloudflare.com/ajax/libs/moment.js/2.9.0/moment-with-locales.js"></script>
+  <script src="//cdn.rawgit.com/Eonasdan/bootstrap-datetimepicker/e8bddc60e73c1ec2475f827be36e1957af72e2ea/src/js/bootstrap-datetimepicker.js"></script>
+  <script src="/static/script.js"></script>
+</body>
+
+</html>
